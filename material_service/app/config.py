@@ -16,13 +16,23 @@ class Settings(BaseSettings):
 
     database_url: SecretStr
     material_service_api_token: SecretStr
+    transfer_signing_secret: SecretStr
     material_storage_root: Path
     max_file_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
     max_pdf_pages: int = Field(default=300, gt=0)
     processing_timeout_seconds: int = Field(default=120, gt=0)
-    default_search_limit: int = Field(default=10, gt=0)
-    max_search_limit: int = Field(default=50, gt=0)
-    chunk_max_chars: int = Field(default=1500, gt=0)
+    default_search_limit: int = Field(default=5, gt=0)
+    max_search_limit: int = Field(default=20, gt=0)
+    chunk_target_chars: int = Field(default=900, gt=0)
+    chunk_max_chars: int = Field(default=1200, gt=0)
+    chunk_overlap_chars: int = Field(default=150, ge=0)
+    upload_url_ttl_seconds: int = Field(default=600, gt=0)
+    download_url_ttl_seconds: int = Field(default=600, gt=0)
+    embedding_model_name: str = (
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
+    embedding_dimension: int = Field(default=384, gt=0)
+    embedding_batch_size: int = Field(default=8, gt=0)
 
 
 @lru_cache
