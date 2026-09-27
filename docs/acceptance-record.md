@@ -35,18 +35,18 @@
 
 | 检查 | 命令/输入 | 预期结果 | 实际结果 | 证据路径 | 状态 | 备注 |
 |---|---|---|---|---|---|---|
-| SH 只读快照 | 手册阶段 1 | 容器、网络、端口、磁盘、DNS 可确认 | Ubuntu 24.04.4，Docker 29.1.3，Compose 2.40.3，根盘剩余 19G；Caddy 独占 80/443；SH 无法解析新域名 | 2026-09-27 SSH 只读快照 | FAIL | `materials.for-fdd.xyz` 在 SH 上 `Could not resolve host`，部署门暂停 |
-| 新栈内部就绪 | 手册阶段 3 | 迁移成功，`/ready` 成功 |  |  | NOT RUN |  |
-| Caddy 备份 | 时间戳副本 | 副本存在 |  |  | NOT RUN |  |
-| Caddy 配置校验 | `caddy validate` | 成功 |  |  | NOT RUN | 失败则不 reload |
-| 原站点回归 | `https://for-fdd.xyz/` | 变更前后均正常 | 变更前 HTTP 200 | 2026-09-27 SH `curl` 输出 | NOT RUN | 变更后回归尚未执行，不提前标 PASS |
-| 新站 HTTPS | `/health` 和 `/ready` | TLS 有效，状态正常 |  |  | NOT RUN |  |
-| Windows HTTP 冒烟 | `deploy/sh-smoke.ps1` | 上传和检索成功 |  |  | NOT RUN |  |
-| 第二台机器 MCP | `tools/list` + 3 个工具 | 均返回结构化 JSON |  |  | NOT RUN |  |
+| SH 只读快照 | 手册阶段 1 | 容器、网络、端口、磁盘、DNS 可确认 | Ubuntu 24.04.4，Docker 29.1.3，Compose 2.40.3，根盘剩余 19G；Caddy 独占 80/443；DNS 后续解析到 `124.222.112.238` | 2026-09-27 SSH 只读快照与部署前复查 | PASS | 首次快照时 DNS 未生效，确认生效后才开始写入 |
+| 新栈内部就绪 | 手册阶段 3 | 迁移成功，`/ready` 成功 | 迁移 `20260927_0001` 成功，`/health=ok`，`/ready=ready` | 2026-09-27 SH Compose 与容器内请求输出 | PASS | PostgreSQL 和 API 均未发布宿主机端口 |
+| Caddy 备份 | 时间戳副本 | 副本存在 | `/opt/for-mygirl/shared/prod/Caddyfile.material-library-20260927-1618.bak`，498 bytes | 2026-09-27 SH `stat` 输出 | PASS |  |
+| Caddy 配置校验 | `caddy validate` | 成功 | `Valid configuration` | 2026-09-27 Caddy 容器校验输出 | PASS | 通过容器内候选文件热加载，未重建容器 |
+| 原站点回归 | `https://for-fdd.xyz/` | 变更前后均正常 | 变更前后均为 HTTP 200 | 2026-09-27 SH `curl` 输出 | PASS |  |
+| 新站 HTTPS | `/health` 和 `/ready` | TLS 有效，状态正常 | Let's Encrypt `YE1`，CN=`materials.for-fdd.xyz`；`ok` / `ready` | 2026-09-27 SH `curl` 与 `openssl s_client` 输出 | PASS | 证书截止 2026-12-26 |
+| Windows HTTP 冒烟 | 本机到公网 HTTPS | 上传和检索成功 | `doc_f62f9180592448248d0f88743781756a`，2 页/1 片段，命中页码 1-2 | 2026-09-27 本机 Docker/httpx 公网输出 | PASS | Windows 本地 DNS/代理/Schannel 干扰脚本，验收容器使用正确 SNI 与证书校验 |
+| 第二台机器 MCP | `tools/list` + 3 个工具 | 均返回结构化 JSON | 本机隔离容器已通过真实 stdio MCP；协议 `2025-11-25`，3 工具全成功 | 2026-09-27 MCP ClientSession 输出 | NOT RUN | 尚未由队友的第二台物理机器复验，不升级为 PASS |
 
 ## 边界和接受的风险
 
 | 检查 | 命令/输入 | 预期结果 | 实际结果 | 证据路径 | 状态 | 备注 |
 |---|---|---|---|---|---|---|
-| 范围声明 | 对照设计文档 | 未实现 OCR、RAG、向量库、私有资料、更新/删除、异步 Worker |  |  | NOT RUN |  |
-| 备份边界 | 对照部署手册 | 没有备份或恢复保证 |  |  | NOT RUN | PostgreSQL 卷和 PDF 卷必须成对保留 |
+| 范围声明 | 对照设计文档 | 未实现 OCR、RAG、向量库、私有资料、更新/删除、异步 Worker | 代码和部署均保持该范围 | 当前提交 + 公网/MCP 验收 | PASS |  |
+| 备份边界 | 对照部署手册 | 没有备份或恢复保证 | 未实现备份，文档已明示风险 | `docs/deployment-runbook.md` | PASS | PostgreSQL 卷和 PDF 卷必须成对保留 |
