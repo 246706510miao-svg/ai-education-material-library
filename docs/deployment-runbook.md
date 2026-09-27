@@ -2,7 +2,7 @@
 
 ## 1. 原则与变更范围
 
-目标是在 SH 的 `/opt/material-library` 部署独立 PostgreSQL 和 `material-service`，再让现有 Caddy 代理 `materials.for-fdd.xyz`。不修改 PostgreSQL 公网端口，不重建 `for-mygirl` 栈，不使用 `docker compose down --volumes`。
+目标是在 SH 的 `/opt/material-library` 部署 pgvector PostgreSQL 和单 worker `material-service`，再让现有 Caddy 代理 `https://materials.for-fdd.xyz/mcp` 及短期传输 URL。不修改 PostgreSQL 公网端口，不重建 `for-mygirl` 栈，不使用 `docker compose down --volumes`。
 
 以下每个阶段都是独立停止点。实际容器名和 Compose 项目名必须在第 1 阶段重新确认，不得只依赖旧记录。
 
@@ -42,7 +42,7 @@ docker compose -f deploy/compose.yaml --env-file .env config
 ```
 
 - 预期：只新建 `/opt/material-library`、项目文件和 `material_proxy`；Compose 配置可完整展开。
-- 停止：传输文件不完整、密码/Token 为示例值、Compose 出现公网端口或网络冲突。
+- 停止：传输文件不完整、数据库密码/API Token/传输签名密钥为示例值、Compose 出现公网端口或网络冲突。
 - 回滚：停止本项目容器；确认无其他容器使用后才删除新建的 `material_proxy`。不触碰 `/opt/for-mygirl`。
 
 ## 4. 阶段 3：数据库、迁移与内部健康检查
@@ -99,7 +99,7 @@ curl -fsS https://materials.for-fdd.xyz/ready
 - 停止：原站点异常、TLS 失败、新域名 502/503 或 `/ready` 失败。
 - 回滚：恢复备份 Caddyfile，validate 后 reload；不重启整个 `for-mygirl` 栈。
 
-## 7. 阶段 6：Windows HTTP 与第二台机器 MCP 验收
+## 7. 阶段 6：Windows HTTP 与 Codex MCP 验收
 
 Windows 使用 [API 契约](api-contract.md) 或：
 
@@ -109,9 +109,9 @@ Windows 使用 [API 契约](api-contract.md) 或：
   -PdfPath 'D:\materials\multiple-integrals.pdf'
 ```
 
-在第二台机器 clone 仓库，配置公网 Base URL 和 Token，然后验证 MCP `tools/list`、`upload_pdf`、`list_materials`和 `search_materials`。
+Codex 只配置远程 URL `https://materials.for-fdd.xyz/mcp` 和 Bearer Key，然后验证 `tools/list` 精确返回 `prepare_material_upload`、`get_upload_result`、`list_materials`、`search_course_material`、`get_document_content`、`get_document_download`。MCP Inspector 使用同一 URL 与 Key 做第二客户端协议验收。
 
-- 预期：HTTP 和 MCP 都返回同一类结构化证据，搜索项可回溯资料和页码。
+- 预期：HTTP 和 MCP 都返回结构化 JSON，搜索项可回溯资料和页码，上传与下载只暴露短期 URL。
 - 停止：仅服务器内可访问、Token 错误、上传超时、MCP 返回非 JSON 或原站点回归失败。
 - 回滚：先移除新 Caddy 站点并热加载，再用 `docker compose ... down` 停止本项目；不删除持久卷。
 

@@ -3,6 +3,16 @@ materials.for-fdd.xyz {
         max_size 50MB
     }
 
+    handle /mcp* {
+        reverse_proxy material-service:8000 {
+            flush_interval -1
+            transport http {
+                read_timeout 130s
+                write_timeout 130s
+            }
+        }
+    }
+
     reverse_proxy material-service:8000 {
         transport http {
             read_timeout 130s
