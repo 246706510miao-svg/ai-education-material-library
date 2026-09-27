@@ -1,3 +1,4 @@
+from material_service.app.chunking import build_chunks
 from material_service.app.pdf_parser import ParsedPage, chunk_pages
 
 
@@ -52,4 +53,38 @@ def test_chunk_pages_ignores_whitespace_only_pages() -> None:
 
     assert [chunk.text for chunk in chunks] == ["Useful text"]
     assert chunks[0].page_start == 2
+
+
+def test_build_chunks_prefers_paragraph_boundaries_and_tracks_heading() -> None:
+    """A target boundary must not discard headings or source page provenance."""
+    chunks = build_chunks(
+        [
+            page(
+                1,
+                "第一节 定义\n\n第一段内容一二三四五六七八九十。"
+                "\n\n第二段内容一二三四五六七八九十。",
+            ),
+            page(2, "第三段内容一二三四五六七八九十。"),
+        ],
+        target_chars=32,
+        max_chars=44,
+        overlap_chars=8,
+    )
+
+    assert len(chunks) >= 2
+    assert chunks[0].page_start == 1
+    assert chunks[-1].page_end == 2
+    assert chunks[0].heading_path == ["第一节 定义"]
+    assert all(len(chunk.text) <= 44 for chunk in chunks)
+    assert chunks[0].text[-8:] == chunks[1].text[:8]
+
+
+def test_build_chunks_keeps_metadata_out_of_returned_text() -> None:
+    """Embedding metadata must never be mixed into the raw content returned to callers."""
+    chunks = build_chunks(
+        [page(1, "原始正文")], target_chars=20, max_chars=30, overlap_chars=5
+    )
+
+    assert chunks[0].text == "原始正文"
+    assert "school" not in chunks[0].text
 
