@@ -15,3 +15,15 @@ class FileTooLargeError(MaterialServiceError):
 class StorageUnavailableError(MaterialServiceError):
     error_code = "STORAGE_UNAVAILABLE"
 
+
+class PdfCorruptedError(MaterialServiceError):
+    error_code = "PDF_CORRUPTED"
+
+
+class TooManyPagesError(MaterialServiceError):
+    error_code = "TOO_MANY_PAGES"
+
+
+class PdfTextNotExtractableError(MaterialServiceError):
+    error_code = "PDF_TEXT_NOT_EXTRACTABLE"
+
