@@ -6,40 +6,40 @@
 
 | 项目 | 命令/输入 | 预期结果 | 实际结果 | 证据路径 | 状态 | 备注 |
 |---|---|---|---|---|---|---|
-| Python | `python --version` | Python 3.12.x |  |  | NOT RUN |  |
-| PostgreSQL | `SELECT version()` | PostgreSQL 16.x |  |  | NOT RUN |  |
-| PyMuPDF | `python -c "import pymupdf; print(pymupdf.version)"` | 输出实际版本 |  |  | NOT RUN |  |
-| MCP SDK | `uv run python -m mcp_server.server --version` | 输出 SDK 版本 |  |  | NOT RUN | 同时记录客户端协议信息 |
+| Python | `uv run python --version` | Python 3.12.x | Python 3.12.13 | 2026-09-27 本地验收命令输出 | PASS |  |
+| PostgreSQL | `SELECT version()` | PostgreSQL 16.x | PostgreSQL 16.15, Alpine, 64-bit | 2026-09-27 本地容器输出 | PASS |  |
+| PyMuPDF | `python -c "import pymupdf; print(pymupdf.version)"` | 输出实际版本 | 1.28.2 | 2026-09-27 本地验收命令输出 | PASS |  |
+| MCP SDK | `uv run python -m mcp_server.server --version` | 输出 SDK 版本 | mcp-sdk 1.30.0 | 2026-09-27 本地验收命令输出 | PASS | 实际客户端协议握手尚未远程验收 |
 
 ## 本地自动化与容器
 
 | 检查 | 命令/输入 | 预期结果 | 实际结果 | 证据路径 | 状态 | 备注 |
 |---|---|---|---|---|---|---|
-| 静态检查 | `uv run ruff check material_service mcp_server frontend_poc tests` | 0 个错误 |  |  | NOT RUN |  |
-| 全量测试 | `uv run pytest -q` | 0 个失败 |  |  | NOT RUN |  |
-| Compose 展开 | `docker compose -f deploy/compose.yaml config` | 成功，无对外 DB 端口 |  |  | NOT RUN |  |
-| 数据库迁移 | `docker compose ... run --rm material-service alembic upgrade head` | 升级至 head |  |  | NOT RUN |  |
-| 内部健康 | `/health` 与 `/ready` | `ok` / `ready` |  |  | NOT RUN |  |
-| 文本 PDF 上传 | 2 页文本 PDF | 有 ID、页数、片段数 |  |  | NOT RUN |  |
-| 幂等重试 | 相同 `idempotency_key` | ID 相同，不新增记录 |  |  | NOT RUN |  |
-| 重复文件 | 同文件、新幂等键 | `duplicate_file=true` |  |  | NOT RUN |  |
-| 扫描 PDF | 无文字 PDF | `PDF_TEXT_NOT_EXTRACTABLE` |  |  | NOT RUN |  |
-| 伪装 PDF | 错误文件内容 | `NOT_A_PDF` |  |  | NOT RUN |  |
-| 存在词检索 | 已入库关键词 | 返回原文、来源和页码 |  |  | NOT RUN |  |
-| 无结果检索 | 不存在的词 | `not_found` 且 `items=[]` |  |  | NOT RUN |  |
-| Token 错误 | `Bearer wrong-token` | `UNAUTHORIZED` |  |  | NOT RUN |  |
-| 数据库故障 | 停止 PostgreSQL 后请求 | `DATABASE_UNAVAILABLE` |  |  | NOT RUN | 故障演练后立即恢复 DB |
-| 重启持久化 | 停止/启动 Compose 后再查 | 原资料仍可检索 |  |  | NOT RUN | 不使用 `--volumes` |
+| 静态检查 | `uv run ruff check material_service mcp_server frontend_poc tests` | 0 个错误 | `All checks passed!` | 2026-09-27 本地验收命令输出 | PASS |  |
+| 全量测试 | `uv run pytest -q` | 0 个失败 | `51 passed in 10.61s` | 2026-09-27 本地验收命令输出 | PASS |  |
+| Compose 展开 | `docker compose -f deploy/compose.yaml config --quiet` | 成功，无对外 DB 端口 | 退出码 0；策略测试确认两个服务无 `ports` | 命令输出 + `tests/e2e/test_compose_smoke.py` | PASS |  |
+| 数据库迁移 | `docker compose ... run --rm material-service alembic upgrade head` | 升级至 head | PostgreSQL migration context 成功，head 已应用 | 2026-09-27 本地容器输出 | PASS | Alembic 环境变量覆盖问题已有回归测试 |
+| 内部健康 | `/health` 与 `/ready` | `ok` / `ready` | `{"status":"ok"}` / `{"status":"ready"}` | 2026-09-27 本地容器输出 | PASS |  |
+| 文本 PDF 上传 | 2 页文本 PDF | 有 ID、页数、片段数 | `doc_4e3480f46c8846bd92ee3467684a54af`，2 页，1 片段 | 2026-09-27 完整接口验收输出 | PASS | `searchable=true` |
+| 幂等重试 | 相同 `local-acceptance-20260927-v1` | ID 相同，不新增记录 | `retry_same_ids=true` | 2026-09-27 完整接口验收输出 | PASS |  |
+| 重复文件 | 同文件、新幂等键 | `duplicate_file=true` | 新 `document_id`，复用 `file_56afcbbc787e44c699809b3104940fc4`，`duplicate_file=true` | 2026-09-27 完整接口验收输出 | PASS |  |
+| 扫描 PDF | 无文字 PDF | `PDF_TEXT_NOT_EXTRACTABLE` | HTTP 422，`request_id=82a495e78e234ce1ac3d46b86bd3dcbc` | 2026-09-27 完整接口验收输出 | PASS |  |
+| 伪装 PDF | 错误文件内容 | `NOT_A_PDF` | HTTP 400，`request_id=c1a3c1b5a4fc42cd860a0977569366ed` | 2026-09-27 完整接口验收输出 | PASS |  |
+| 存在词检索 | `Fubini` | 返回原文、来源和页码 | 2 项，页码 1-2，来源 `local acceptance` | 2026-09-27 完整接口验收输出 | PASS | 两个逻辑资料复用同一文件 |
+| 无结果检索 | `phrase-that-cannot-exist-92741` | `not_found` 且 `items=[]` | 与预期一致 | 2026-09-27 完整接口验收输出 | PASS |  |
+| Token 错误 | `Bearer wrong-token` | `UNAUTHORIZED` | HTTP 401，`request_id=fc8aef2950bc4889885bbb88ba1c1a0e` | 2026-09-27 完整接口验收输出 | PASS |  |
+| 数据库故障 | 停止 PostgreSQL 后请求 | `DATABASE_UNAVAILABLE` | HTTP 503，`request_id=2ce78e3eb0c64d75910a996760540904` | 2026-09-27 故障演练输出 | PASS | 已立即恢复 DB |
+| 重启持久化 | 停止/启动服务与 DB 后再查 | 原资料仍可检索 | `/ready=ready`，`Fubini` 仍返回 2 项和原 `document_id` | 2026-09-27 恢复与持久化输出 | PASS | 未使用 `--volumes` |
 
 ## SH 与公网验收
 
 | 检查 | 命令/输入 | 预期结果 | 实际结果 | 证据路径 | 状态 | 备注 |
 |---|---|---|---|---|---|---|
-| SH 只读快照 | 手册阶段 1 | 容器、网络、端口、磁盘、DNS 可确认 |  |  | NOT RUN |  |
+| SH 只读快照 | 手册阶段 1 | 容器、网络、端口、磁盘、DNS 可确认 | Ubuntu 24.04.4，Docker 29.1.3，Compose 2.40.3，根盘剩余 19G；Caddy 独占 80/443；SH 无法解析新域名 | 2026-09-27 SSH 只读快照 | FAIL | `materials.for-fdd.xyz` 在 SH 上 `Could not resolve host`，部署门暂停 |
 | 新栈内部就绪 | 手册阶段 3 | 迁移成功，`/ready` 成功 |  |  | NOT RUN |  |
 | Caddy 备份 | 时间戳副本 | 副本存在 |  |  | NOT RUN |  |
 | Caddy 配置校验 | `caddy validate` | 成功 |  |  | NOT RUN | 失败则不 reload |
-| 原站点回归 | `https://for-fdd.xyz/` | 变更前后均正常 |  |  | NOT RUN |  |
+| 原站点回归 | `https://for-fdd.xyz/` | 变更前后均正常 | 变更前 HTTP 200 | 2026-09-27 SH `curl` 输出 | NOT RUN | 变更后回归尚未执行，不提前标 PASS |
 | 新站 HTTPS | `/health` 和 `/ready` | TLS 有效，状态正常 |  |  | NOT RUN |  |
 | Windows HTTP 冒烟 | `deploy/sh-smoke.ps1` | 上传和检索成功 |  |  | NOT RUN |  |
 | 第二台机器 MCP | `tools/list` + 3 个工具 | 均返回结构化 JSON |  |  | NOT RUN |  |
