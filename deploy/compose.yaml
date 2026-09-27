@@ -1,0 +1,68 @@
+name: material-library
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  material-service:
+    build:
+      context: ..
+      dockerfile: deploy/material-service.Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      MATERIAL_SERVICE_API_TOKEN: ${MATERIAL_SERVICE_API_TOKEN:?MATERIAL_SERVICE_API_TOKEN is required}
+      MATERIAL_STORAGE_ROOT: /data/materials
+      MAX_FILE_BYTES: ${MAX_FILE_BYTES:-52428800}
+      MAX_PDF_PAGES: ${MAX_PDF_PAGES:-300}
+      PROCESSING_TIMEOUT_SECONDS: ${PROCESSING_TIMEOUT_SECONDS:-120}
+      DEFAULT_SEARCH_LIMIT: ${DEFAULT_SEARCH_LIMIT:-10}
+      MAX_SEARCH_LIMIT: ${MAX_SEARCH_LIMIT:-50}
+      CHUNK_MAX_CHARS: ${CHUNK_MAX_CHARS:-1500}
+    volumes:
+      - material_files:/data/materials
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    expose:
+      - "8000"
+    networks:
+      default: {}
+      material_proxy:
+        aliases:
+          - material-service
+
+volumes:
+  postgres_data:
+  material_files:
+
+networks:
+  material_proxy:
+    external: true
+    name: material_proxy
+

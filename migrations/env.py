@@ -1,12 +1,15 @@
 from logging.config import fileConfig
+import os
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from material_service.app import models  # noqa: F401
 from material_service.app.db import Base
+from material_service.app.migration_config import apply_database_url
 
 config = context.config
+apply_database_url(config, os.environ)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
