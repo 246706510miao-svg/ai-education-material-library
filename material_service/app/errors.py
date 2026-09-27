@@ -35,3 +35,11 @@ class DatabaseUnavailableError(MaterialServiceError):
 class PdfProcessingTimeoutError(MaterialServiceError):
     error_code = "PDF_PROCESSING_TIMEOUT"
 
+
+class UnauthorizedError(MaterialServiceError):
+    error_code = "UNAUTHORIZED"
+
+
+class InvalidArgumentError(MaterialServiceError):
+    error_code = "INVALID_ARGUMENT"
+

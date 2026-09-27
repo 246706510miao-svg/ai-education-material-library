@@ -1,10 +1,10 @@
 from pathlib import Path
 
-import fitz
+import pymupdf
 
 
 def create_text_pdf(path: Path) -> Path:
-    document = fitz.open()
+    document = pymupdf.open()
     first_page = document.new_page()
     first_page.insert_text((72, 72), "Double integral definition and region D.")
     second_page = document.new_page()
@@ -15,7 +15,7 @@ def create_text_pdf(path: Path) -> Path:
 
 
 def create_image_only_pdf(path: Path) -> Path:
-    document = fitz.open()
+    document = pymupdf.open()
     document.new_page()
     document.save(path)
     document.close()

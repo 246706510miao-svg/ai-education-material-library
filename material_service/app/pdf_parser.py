@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import fitz
+import pymupdf
 
 from material_service.app.errors import (
     PdfCorruptedError,
@@ -56,8 +56,8 @@ def extract_pdf(path: Path, max_pages: int) -> ParsedDocument:
     """Extract one-based text pages from a supported PDF."""
 
     try:
-        document = fitz.open(path)
-    except (fitz.FileDataError, RuntimeError, ValueError) as error:
+        document = pymupdf.open(path)
+    except (pymupdf.FileDataError, RuntimeError, ValueError) as error:
         raise PdfCorruptedError("The PDF is corrupted or cannot be opened.") from error
 
     try:
@@ -75,7 +75,7 @@ def extract_pdf(path: Path, max_pages: int) -> ParsedDocument:
         ]
     except (PdfCorruptedError, TooManyPagesError):
         raise
-    except (fitz.FileDataError, RuntimeError, ValueError) as error:
+    except (pymupdf.FileDataError, RuntimeError, ValueError) as error:
         raise PdfCorruptedError("The PDF content could not be extracted.") from error
     finally:
         document.close()
