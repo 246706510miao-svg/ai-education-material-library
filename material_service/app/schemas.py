@@ -110,3 +110,26 @@ class SearchResponse(BaseModel):
     retrieval_modes: list[str] = Field(default_factory=list)
     warning_code: str | None = None
 
+
+class DocumentContentItem(BaseModel):
+    chunk_index: int
+    page_start: int
+    page_end: int
+    heading_path: list[str] | None
+    text: str
+    quality_flags: list[str]
+
+
+class DocumentContentPage(BaseModel):
+    status: str = "success"
+    document_id: str
+    items: list[DocumentContentItem]
+    next_cursor: str | None = None
+
+
+class DocumentDownload(BaseModel):
+    status: str = "success"
+    document_id: str
+    download_url: str
+    expires_in_seconds: int
+

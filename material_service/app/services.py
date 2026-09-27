@@ -28,6 +28,8 @@ from material_service.app.models import (
 )
 from material_service.app.pdf_parser import PARSER_VERSION, extract_pdf
 from material_service.app.repositories import (
+    document_content_rows,
+    document_file_row,
     find_document_by_file,
     find_ingestion_run,
     find_stored_file,
@@ -46,6 +48,9 @@ from material_service.app.retrieval import (
     reciprocal_rank_fusion,
 )
 from material_service.app.schemas import (
+    DocumentContentItem,
+    DocumentContentPage,
+    DocumentDownload,
     IngestMetadata,
     IngestResult,
     MaterialPage,
@@ -108,6 +113,64 @@ class MaterialService:
             file_id=file_id, ttl_seconds=self._download_url_ttl_seconds
         )
         return f"/transfers/downloads/{token}"
+
+    def get_document_content(
+        self, document_id: str, *, limit: int = 20, cursor: str | None = None
+    ) -> DocumentContentPage:
+        bounded_limit = min(max(limit, 1), 20)
+        fingerprint = query_fingerprint({"document_id": document_id, "kind": "content"})
+        offset = decode_cursor(cursor, fingerprint)
+        try:
+            with self._session_factory() as session:
+                rows = document_content_rows(
+                    session,
+                    document_id=document_id,
+                    offset=offset,
+                    limit=bounded_limit + 1,
+                )
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
+        visible = rows[:bounded_limit]
+        return DocumentContentPage(
+            status="success" if visible else "not_found",
+            document_id=document_id,
+            items=[
+                DocumentContentItem(
+                    chunk_index=chunk.chunk_index,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
+                    heading_path=chunk.heading_path,
+                    text=chunk.text,
+                    quality_flags=chunk.quality_flags,
+                )
+                for chunk in visible
+            ],
+            next_cursor=(
+                encode_cursor(offset + bounded_limit, fingerprint)
+                if len(rows) > bounded_limit
+                else None
+            ),
+        )
+
+    def get_document_download(self, document_id: str) -> DocumentDownload:
+        try:
+            with self._session_factory() as session:
+                row = document_file_row(session, document_id)
+                if row is None:
+                    return DocumentDownload(
+                        status="not_found",
+                        document_id=document_id,
+                        download_url="",
+                        expires_in_seconds=0,
+                    )
+                _document, _version, stored_file = row
+                return DocumentDownload(
+                    document_id=document_id,
+                    download_url=self.create_download_url(stored_file.id),
+                    expires_in_seconds=self._download_url_ttl_seconds,
+                )
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
 
     def prepare_material_upload(
         self, metadata: IngestMetadata, confirmation_id: str | None = None

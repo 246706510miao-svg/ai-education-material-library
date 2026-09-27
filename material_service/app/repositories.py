@@ -286,3 +286,34 @@ def vector_candidate_rows(
         session.execute(statement.order_by(distance, DocumentChunk.id).limit(limit)).all()
     )
 
+
+def document_content_rows(
+    session: Session, *, document_id: str, offset: int, limit: int
+) -> list[DocumentChunk]:
+    return list(
+        session.scalars(
+            select(DocumentChunk)
+            .join(DocumentVersion, DocumentChunk.document_version_id == DocumentVersion.id)
+            .join(Document, DocumentVersion.document_id == Document.id)
+            .where(
+                Document.id == document_id,
+                Document.current_version_id == DocumentVersion.id,
+                DocumentVersion.searchable.is_(True),
+            )
+            .order_by(DocumentChunk.chunk_index)
+            .offset(offset)
+            .limit(limit)
+        )
+    )
+
+
+def document_file_row(
+    session: Session, document_id: str
+) -> tuple[Document, DocumentVersion, StoredFile] | None:
+    return session.execute(
+        select(Document, DocumentVersion, StoredFile)
+        .join(DocumentVersion, Document.current_version_id == DocumentVersion.id)
+        .join(StoredFile, DocumentVersion.file_id == StoredFile.id)
+        .where(Document.id == document_id)
+    ).one_or_none()
+

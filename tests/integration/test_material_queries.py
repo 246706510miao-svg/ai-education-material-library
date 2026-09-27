@@ -207,3 +207,28 @@ def test_search_scope_filters_are_exact(service: MaterialService, tmp_path: Path
     assert all(item.school == "南京理工大学" for item in found.items)
     assert missing.status == "not_found"
 
+
+def test_document_content_is_paged_and_raw(service: MaterialService, tmp_path: Path) -> None:
+    """Whole-document access must be bounded while preserving parsed source text and pages."""
+    result = ingest(service, tmp_path, title="分页讲义", key="content-page")
+
+    page = service.get_document_content(result.document_id, limit=1)
+
+    assert len(page.items) == 1
+    assert page.items[0].page_start == 1
+    assert "Double integral" in page.items[0].text
+    assert "school:" not in page.items[0].text
+
+
+def test_document_download_returns_short_lived_url(
+    service: MaterialService, tmp_path: Path
+) -> None:
+    """Original PDF access must expose a capability URL, never a storage path."""
+    result = ingest(service, tmp_path, title="下载讲义", key="download")
+
+    download = service.get_document_download(result.document_id)
+
+    assert download.document_id == result.document_id
+    assert download.download_url.startswith("/transfers/downloads/")
+    assert "materials" not in download.download_url
+

@@ -123,7 +123,13 @@ def test_search_not_found_is_a_normal_successful_response(client: TestClient) ->
     )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "not_found", "items": []}
+    assert response.json() == {
+        "status": "not_found",
+        "items": [],
+        "next_cursor": None,
+        "retrieval_modes": ["lexical", "semantic"],
+        "warning_code": None,
+    }
 
 
 def test_image_only_pdf_maps_to_the_stable_error_envelope(

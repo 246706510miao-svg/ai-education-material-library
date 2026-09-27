@@ -13,6 +13,8 @@ from material_service.app.errors import (
     StorageUnavailableError,
 )
 from material_service.app.schemas import (
+    DocumentContentPage,
+    DocumentDownload,
     IngestMetadata,
     IngestResult,
     MaterialPage,
@@ -103,6 +105,23 @@ def prepare_upload(
 @protected.get("/materials/uploads/{intent_id}", response_model=IngestResult)
 def get_upload_result(request: Request, intent_id: str) -> IngestResult:
     return get_service(request).get_upload_result(intent_id)
+
+
+@protected.get("/materials/{document_id}/content", response_model=DocumentContentPage)
+def get_document_content(
+    request: Request,
+    document_id: str,
+    limit: Annotated[int, Query(ge=1, le=20)] = 20,
+    cursor: str | None = None,
+) -> DocumentContentPage:
+    return get_service(request).get_document_content(
+        document_id, limit=limit, cursor=cursor
+    )
+
+
+@protected.get("/materials/{document_id}/download", response_model=DocumentDownload)
+def get_document_download(request: Request, document_id: str) -> DocumentDownload:
+    return get_service(request).get_document_download(document_id)
 
 
 @router.put("/transfers/uploads/{token}", response_model=IngestResult)
