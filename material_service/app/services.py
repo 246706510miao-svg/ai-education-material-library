@@ -31,14 +31,19 @@ from material_service.app.repositories import (
     find_document_by_file,
     find_ingestion_run,
     find_stored_file,
+    lexical_candidate_rows,
     load_successful_ingest_result,
     possible_duplicate_rows,
+    vector_candidate_rows,
 )
 from material_service.app.repositories import (
     list_materials as list_material_rows,
 )
-from material_service.app.repositories import (
-    search_materials as search_material_rows,
+from material_service.app.retrieval import (
+    decode_cursor,
+    encode_cursor,
+    query_fingerprint,
+    reciprocal_rank_fusion,
 )
 from material_service.app.schemas import (
     IngestMetadata,
@@ -46,6 +51,7 @@ from material_service.app.schemas import (
     MaterialPage,
     PossibleDuplicate,
     PrepareUploadResult,
+    SearchItem,
     SearchRequest,
     SearchResponse,
 )
@@ -215,20 +221,92 @@ class MaterialService:
             raise DatabaseUnavailableError("The material database is unavailable.") from error
 
     def search_materials(self, request: SearchRequest) -> SearchResponse:
-        bounded_limit = min(request.limit, 50)
+        filters = request.model_dump(
+            include={
+                "school",
+                "major",
+                "course",
+                "unit",
+                "material_type",
+                "document_id",
+            }
+        )
+        fingerprint = query_fingerprint({"query": request.query, **filters})
+        offset = decode_cursor(request.cursor, fingerprint)
+        vector_failed = False
         try:
             with self._session_factory() as session:
-                items = search_material_rows(
+                lexical = lexical_candidate_rows(
                     session,
                     query=request.query,
-                    course=request.course,
-                    unit=request.unit,
-                    document_id=request.document_id,
-                    limit=bounded_limit,
+                    **filters,
                 )
-            return SearchResponse(status="success" if items else "not_found", items=items)
+            try:
+                query_embedding = self._embedding_provider.embed_texts([request.query])[0]
+                with self._session_factory() as session:
+                    semantic = vector_candidate_rows(
+                        session, query_embedding=query_embedding, **filters
+                    )
+            except (EmbeddingUnavailableError, SQLAlchemyError):
+                semantic = []
+                vector_failed = True
         except SQLAlchemyError as error:
             raise DatabaseUnavailableError("The material database is unavailable.") from error
+
+        lexical_ids = [chunk.id for chunk, _document, _score in lexical]
+        vector_ids = [chunk.id for chunk, _document, _score in semantic]
+        fused = reciprocal_rank_fusion(lexical_ids, vector_ids)
+        rows = {
+            chunk.id: (chunk, document)
+            for chunk, document, _score in [*lexical, *semantic]
+        }
+        cosine_scores = {chunk.id: float(score or 0.0) for chunk, _doc, score in semantic}
+        page = fused[offset : offset + request.limit]
+        items = []
+        for fused_item in page:
+            chunk, document = rows[fused_item.chunk_id]
+            items.append(
+                SearchItem(
+                    chunk_id=chunk.id,
+                    text=chunk.text,
+                    document_id=document.id,
+                    document_title=document.title,
+                    school=document.school,
+                    major=document.major,
+                    course=document.course,
+                    unit=document.unit,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
+                    source_name=document.source_name,
+                    material_type=document.material_type,
+                    quality_flags=chunk.quality_flags,
+                    score=fused_item.score,
+                    lexical_rank=fused_item.lexical_rank if request.debug else None,
+                    vector_rank=fused_item.vector_rank if request.debug else None,
+                    cosine_similarity=(
+                        cosine_scores.get(chunk.id) if request.debug else None
+                    ),
+                )
+            )
+        next_offset = offset + len(items)
+        next_cursor = (
+            encode_cursor(next_offset, fingerprint) if next_offset < len(fused) else None
+        )
+        modes = ["lexical"] + ([] if vector_failed else ["semantic"])
+        status = (
+            "partial_success"
+            if vector_failed and items
+            else "success"
+            if items
+            else "not_found"
+        )
+        return SearchResponse(
+            status=status,
+            items=items,
+            next_cursor=next_cursor,
+            retrieval_modes=modes,
+            warning_code="EMBEDDING_FAILED" if vector_failed else None,
+        )
 
     def ingest_pdf(
         self,

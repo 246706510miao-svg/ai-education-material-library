@@ -71,10 +71,15 @@ class SearchRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     query: str = Field(min_length=1)
+    school: str | None = Field(default=None, max_length=255)
+    major: str | None = Field(default=None, max_length=255)
     course: str | None = Field(default=None, max_length=100)
     unit: str | None = Field(default=None, max_length=100)
+    material_type: str | None = Field(default=None, max_length=50)
     document_id: str | None = Field(default=None, max_length=40)
-    limit: int = Field(default=10, gt=0)
+    limit: int = Field(default=5, gt=0, le=20)
+    cursor: str | None = None
+    debug: bool = False
 
 
 class SearchItem(BaseModel):
@@ -82,16 +87,26 @@ class SearchItem(BaseModel):
     text: str
     document_id: str
     document_title: str
+    school: str
+    major: str
+    course: str
+    unit: str
     page_start: int
     page_end: int
     source_name: str | None
     material_type: str
     quality_flags: list[str]
     score: float
-    score_type: str = "full_text_rank"
+    score_type: str = "rrf"
+    lexical_rank: int | None = None
+    vector_rank: int | None = None
+    cosine_similarity: float | None = None
 
 
 class SearchResponse(BaseModel):
     status: str
     items: list[SearchItem]
+    next_cursor: str | None = None
+    retrieval_modes: list[str] = Field(default_factory=list)
+    warning_code: str | None = None
 

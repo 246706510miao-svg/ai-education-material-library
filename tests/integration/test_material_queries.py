@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from material_service.app.models import DocumentChunk, DocumentVersion
 from material_service.app.schemas import IngestMetadata, SearchRequest
 from material_service.app.services import MaterialService
+from material_service.app.transfers import TransferTokenService
 from tests.fixture_factory import create_text_pdf
 from tests.integration.test_migrations import alembic_config
 
@@ -29,23 +30,40 @@ def migrated_database(postgres_url: str, postgres_engine: Engine) -> Iterator[No
 
 @pytest.fixture
 def service(postgres_engine: Engine, tmp_path: Path) -> MaterialService:
+    class FakeEmbeddingProvider:
+        model_name = "test-embedding"
+
+        def embed_texts(self, texts: list[str]) -> list[list[float]]:
+            return [
+                ([0.0, 1.0] + [0.0] * 382)
+                if "Green theorem" in text or "' OR 1=1 --" in text
+                else ([1.0, 0.0] + [0.0] * 382)
+                for text in texts
+            ]
+
     return MaterialService(
         session_factory=sessionmaker(bind=postgres_engine, expire_on_commit=False),
         storage_root=tmp_path / "materials",
         max_file_bytes=50 * 1024 * 1024,
         max_pdf_pages=300,
-        chunk_max_chars=1500,
+        chunk_target_chars=900,
+        chunk_max_chars=1200,
+        chunk_overlap_chars=150,
         processing_timeout_seconds=120,
+        embedding_provider=FakeEmbeddingProvider(),
+        transfer_service=TransferTokenService(b"transfer-test-secret"),
     )
 
 
 def metadata(title: str, unit: str = "多重积分") -> IngestMetadata:
     return IngestMetadata(
         title=title,
+        school="南京理工大学",
+        major="计算机科学与技术",
         course="高等数学",
         unit=unit,
         source_name="课程资料整理",
-        source_type="course_material",
+        material_type="course_material",
     )
 
 
@@ -107,7 +125,7 @@ def test_search_materials_returns_traceable_quality_flags(
     assert item.page_start == 1
     assert item.page_end == 2
     assert item.source_name == "课程资料整理"
-    assert item.score_type == "full_text_rank"
+    assert item.score_type == "rrf"
     assert "FORMULA_MAY_BE_INCOMPLETE" in item.quality_flags
 
 
@@ -172,4 +190,20 @@ def test_search_uses_bound_parameters_for_user_text(
     assert search_statements
     assert all("' OR 1=1 --" not in statement for statement, _ in search_statements)
     assert any("' OR 1=1 --" in repr(parameters) for _, parameters in search_statements)
+
+
+def test_search_scope_filters_are_exact(service: MaterialService, tmp_path: Path) -> None:
+    """A school filter must never leak a similarly named institution into results."""
+    ingest(service, tmp_path, title="多重积分讲义", key="scope")
+
+    found = service.search_materials(
+        SearchRequest(query="Double integral", school="南京理工大学", limit=5)
+    )
+    missing = service.search_materials(
+        SearchRequest(query="Double integral", school="南京理工", limit=5)
+    )
+
+    assert found.status == "success"
+    assert all(item.school == "南京理工大学" for item in found.items)
+    assert missing.status == "not_found"
 

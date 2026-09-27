@@ -1,4 +1,4 @@
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from material_service.app.models import (
@@ -170,4 +170,119 @@ def search_materials(
         )
         for chunk, document, rank in rows
     ]
+
+
+def _apply_search_filters(
+    statement: Select,
+    *,
+    school: str | None,
+    major: str | None,
+    course: str | None,
+    unit: str | None,
+    material_type: str | None,
+    document_id: str | None,
+) -> Select:
+    filters = (
+        (school, Document.school),
+        (major, Document.major),
+        (course, Document.course),
+        (unit, Document.unit),
+        (material_type, Document.material_type),
+        (document_id, Document.id),
+    )
+    for value, column in filters:
+        if value is not None:
+            statement = statement.where(column == value)
+    return statement
+
+
+def lexical_candidate_rows(
+    session: Session,
+    *,
+    query: str,
+    school: str | None,
+    major: str | None,
+    course: str | None,
+    unit: str | None,
+    material_type: str | None,
+    document_id: str | None,
+    limit: int = 20,
+) -> list[tuple[DocumentChunk, Document, float]]:
+    vector = func.to_tsvector("simple", DocumentChunk.text)
+    tsquery = func.websearch_to_tsquery("simple", query)
+    phrase = f"%{query}%"
+    score = (
+        func.ts_rank_cd(vector, tsquery)
+        + case((DocumentChunk.text.ilike(phrase), 1.0), else_=0.0)
+        + case((Document.title.ilike(phrase), 0.6), else_=0.0)
+        + case((Document.unit.ilike(phrase), 0.3), else_=0.0)
+    ).label("lexical_score")
+    statement = (
+        select(DocumentChunk, Document, score)
+        .join(DocumentVersion, DocumentChunk.document_version_id == DocumentVersion.id)
+        .join(Document, DocumentVersion.document_id == Document.id)
+        .where(
+            Document.current_version_id == DocumentVersion.id,
+            DocumentVersion.searchable.is_(True),
+            DocumentChunk.text_quality != "unusable",
+            or_(
+                vector.op("@@")(tsquery),
+                DocumentChunk.text.ilike(phrase),
+                Document.title.ilike(phrase),
+                Document.unit.ilike(phrase),
+            ),
+        )
+    )
+    statement = _apply_search_filters(
+        statement,
+        school=school,
+        major=major,
+        course=course,
+        unit=unit,
+        material_type=material_type,
+        document_id=document_id,
+    )
+    return list(
+        session.execute(statement.order_by(score.desc(), DocumentChunk.id).limit(limit)).all()
+    )
+
+
+def vector_candidate_rows(
+    session: Session,
+    *,
+    query_embedding: list[float],
+    school: str | None,
+    major: str | None,
+    course: str | None,
+    unit: str | None,
+    material_type: str | None,
+    document_id: str | None,
+    limit: int = 20,
+) -> list[tuple[DocumentChunk, Document, float]]:
+    distance = DocumentChunk.embedding.cosine_distance(query_embedding)
+    similarity = (1 - distance).label("cosine_similarity")
+    statement = (
+        select(DocumentChunk, Document, similarity)
+        .join(DocumentVersion, DocumentChunk.document_version_id == DocumentVersion.id)
+        .join(Document, DocumentVersion.document_id == Document.id)
+        .where(
+            Document.current_version_id == DocumentVersion.id,
+            DocumentVersion.searchable.is_(True),
+            DocumentChunk.text_quality != "unusable",
+            DocumentChunk.embedding.is_not(None),
+            similarity >= 0.25,
+        )
+    )
+    statement = _apply_search_filters(
+        statement,
+        school=school,
+        major=major,
+        course=course,
+        unit=unit,
+        material_type=material_type,
+        document_id=document_id,
+    )
+    return list(
+        session.execute(statement.order_by(distance, DocumentChunk.id).limit(limit)).all()
+    )
 
