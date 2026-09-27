@@ -6,6 +6,8 @@ from material_service.app.errors import EmbeddingUnavailableError
 
 
 class EmbeddingProvider(Protocol):
+    model_name: str
+
     def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
 
 

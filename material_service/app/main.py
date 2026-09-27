@@ -7,9 +7,10 @@ from fastapi.responses import JSONResponse
 from material_service.app.api import router
 from material_service.app.config import Settings, get_settings
 from material_service.app.db import build_session_factory
-from material_service.app.embedding import FastEmbedProvider
+from material_service.app.embedding import EmbeddingProvider, FastEmbedProvider
 from material_service.app.errors import MaterialServiceError
 from material_service.app.services import MaterialService
+from material_service.app.transfers import TransferTokenService
 
 ERROR_STATUS = {
     "UNAUTHORIZED": 401,
@@ -21,6 +22,7 @@ ERROR_STATUS = {
     "PDF_TEXT_NOT_EXTRACTABLE": 422,
     "DATABASE_UNAVAILABLE": 503,
     "EMBEDDING_UNAVAILABLE": 503,
+    "TRANSFER_TOKEN_INVALID": 403,
     "STORAGE_UNAVAILABLE": 503,
     "PDF_PROCESSING_TIMEOUT": 504,
     "INTERNAL_ERROR": 500,
@@ -41,24 +43,36 @@ def _error_response(request: Request, code: str, message: str, status_code: int)
     )
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    embedding_provider: EmbeddingProvider | None = None,
+) -> FastAPI:
     active_settings = settings or get_settings()
     session_factory = build_session_factory(active_settings)
     app = FastAPI(title="Shared Material Service", version="0.1.0")
     app.state.settings = active_settings
     app.state.session_factory = session_factory
-    app.state.embedding_provider = FastEmbedProvider(
+    app.state.embedding_provider = embedding_provider or FastEmbedProvider(
         model_name=active_settings.embedding_model_name,
         dimension=active_settings.embedding_dimension,
         batch_size=active_settings.embedding_batch_size,
+    )
+    app.state.transfer_service = TransferTokenService(
+        active_settings.transfer_signing_secret.get_secret_value().encode("utf-8")
     )
     app.state.material_service = MaterialService(
         session_factory=session_factory,
         storage_root=active_settings.material_storage_root,
         max_file_bytes=active_settings.max_file_bytes,
         max_pdf_pages=active_settings.max_pdf_pages,
+        chunk_target_chars=active_settings.chunk_target_chars,
         chunk_max_chars=active_settings.chunk_max_chars,
+        chunk_overlap_chars=active_settings.chunk_overlap_chars,
         processing_timeout_seconds=active_settings.processing_timeout_seconds,
+        embedding_provider=app.state.embedding_provider,
+        transfer_service=app.state.transfer_service,
+        upload_url_ttl_seconds=active_settings.upload_url_ttl_seconds,
+        download_url_ttl_seconds=active_settings.download_url_ttl_seconds,
     )
 
     @app.middleware("http")

@@ -1,3 +1,6 @@
+import hashlib
+import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic
@@ -7,8 +10,12 @@ from uuid import uuid4
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from material_service.app.chunking import build_chunks
+from material_service.app.embedding import EmbeddingProvider, build_embedding_text
 from material_service.app.errors import (
     DatabaseUnavailableError,
+    EmbeddingUnavailableError,
+    InvalidArgumentError,
     MaterialServiceError,
     PdfProcessingTimeoutError,
 )
@@ -19,11 +26,13 @@ from material_service.app.models import (
     IngestionRun,
     StoredFile,
 )
-from material_service.app.pdf_parser import PARSER_VERSION, chunk_pages, extract_pdf
+from material_service.app.pdf_parser import PARSER_VERSION, extract_pdf
 from material_service.app.repositories import (
+    find_document_by_file,
     find_ingestion_run,
     find_stored_file,
     load_successful_ingest_result,
+    possible_duplicate_rows,
 )
 from material_service.app.repositories import (
     list_materials as list_material_rows,
@@ -35,10 +44,13 @@ from material_service.app.schemas import (
     IngestMetadata,
     IngestResult,
     MaterialPage,
+    PossibleDuplicate,
+    PrepareUploadResult,
     SearchRequest,
     SearchResponse,
 )
 from material_service.app.storage import StoredFilePayload, store_pdf
+from material_service.app.transfers import TransferTokenService
 
 
 def _new_id(prefix: str) -> str:
@@ -52,15 +64,133 @@ class MaterialService:
         storage_root: Path,
         max_file_bytes: int,
         max_pdf_pages: int,
+        chunk_target_chars: int,
         chunk_max_chars: int,
+        chunk_overlap_chars: int,
         processing_timeout_seconds: int,
+        embedding_provider: EmbeddingProvider,
+        transfer_service: TransferTokenService,
+        upload_url_ttl_seconds: int = 600,
+        download_url_ttl_seconds: int = 600,
     ) -> None:
         self._session_factory = session_factory
         self._storage_root = storage_root
         self._max_file_bytes = max_file_bytes
         self._max_pdf_pages = max_pdf_pages
+        self._chunk_target_chars = chunk_target_chars
         self._chunk_max_chars = chunk_max_chars
+        self._chunk_overlap_chars = chunk_overlap_chars
         self._processing_timeout_seconds = processing_timeout_seconds
+        self._embedding_provider = embedding_provider
+        self._transfer_service = transfer_service
+        self._upload_url_ttl_seconds = upload_url_ttl_seconds
+        self._download_url_ttl_seconds = download_url_ttl_seconds
+
+    @staticmethod
+    def _normalized_title(value: str) -> str:
+        return re.sub(r"[^\w]+", "", value.casefold())
+
+    @classmethod
+    def _metadata_hash(cls, metadata: IngestMetadata) -> str:
+        normalized = metadata.model_dump(mode="json")
+        normalized["title"] = cls._normalized_title(metadata.title)
+        value = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    def create_download_url(self, file_id: str) -> str:
+        token = self._transfer_service.issue_download(
+            file_id=file_id, ttl_seconds=self._download_url_ttl_seconds
+        )
+        return f"/transfers/downloads/{token}"
+
+    def prepare_material_upload(
+        self, metadata: IngestMetadata, confirmation_id: str | None = None
+    ) -> PrepareUploadResult:
+        metadata_hash = self._metadata_hash(metadata)
+        try:
+            with self._session_factory() as session:
+                candidates = possible_duplicate_rows(
+                    session,
+                    school=metadata.school,
+                    major=metadata.major,
+                    course=metadata.course,
+                    material_type=metadata.material_type,
+                )
+                title = self._normalized_title(metadata.title)
+                duplicates = [
+                    (document, version)
+                    for document, version in candidates
+                    if title in self._normalized_title(document.title)
+                    or self._normalized_title(document.title) in title
+                ]
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
+        if duplicates and confirmation_id is None:
+            token = self._transfer_service.issue_confirmation(
+                metadata_hash=metadata_hash, ttl_seconds=self._upload_url_ttl_seconds
+            )
+            return PrepareUploadResult(
+                status="confirmation_required",
+                confirmation_id=token,
+                possible_duplicates=[
+                    PossibleDuplicate(
+                        document_id=document.id,
+                        title=document.title,
+                        download_url=self.create_download_url(version.file_id),
+                    )
+                    for document, version in duplicates
+                ],
+            )
+        if confirmation_id is not None:
+            self._transfer_service.consume_confirmation(
+                confirmation_id, metadata_hash=metadata_hash
+            )
+        intent_id = _new_id("intent")
+        token = self._transfer_service.issue_upload(
+            intent_id=intent_id,
+            metadata=metadata.model_dump(mode="json"),
+            ttl_seconds=self._upload_url_ttl_seconds,
+        )
+        return PrepareUploadResult(
+            status="ready",
+            intent_id=intent_id,
+            upload_url=f"/transfers/uploads/{token}",
+            expires_in_seconds=self._upload_url_ttl_seconds,
+        )
+
+    def put_upload(self, token: str, stream: BinaryIO, original_name: str) -> IngestResult:
+        payload = self._transfer_service.consume_upload(token)
+        metadata = IngestMetadata.model_validate(payload["metadata"])
+        return self.ingest_pdf(stream, original_name, metadata, str(payload["intent_id"]))
+
+    def get_upload_result(self, intent_id: str) -> IngestResult:
+        try:
+            with self._session_factory() as session:
+                run = find_ingestion_run(session, intent_id)
+                if run is None:
+                    raise InvalidArgumentError("The upload intent was not found.")
+                return load_successful_ingest_result(session, run)
+        except InvalidArgumentError:
+            raise
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
+
+    def resolve_download(self, token: str) -> tuple[Path, str, str]:
+        payload = self._transfer_service.consume_download(token)
+        try:
+            with self._session_factory() as session:
+                stored_file = session.get(StoredFile, str(payload["file_id"]))
+                if stored_file is None:
+                    raise InvalidArgumentError("The requested file was not found.")
+                return (
+                    self._storage_root / stored_file.storage_key,
+                    stored_file.original_name,
+                    stored_file.mime_type,
+                )
+        except InvalidArgumentError:
+            raise
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
 
     def list_materials(
         self,
@@ -121,6 +251,9 @@ class MaterialService:
                 max_bytes=self._max_file_bytes,
             )
             self._ensure_within_timeout(started)
+            duplicate = self._existing_file_result(run_id, stored, started)
+            if duplicate is not None:
+                return duplicate
             stage = "extracting"
             parsed = extract_pdf(
                 self._storage_root / stored.storage_key,
@@ -128,8 +261,20 @@ class MaterialService:
             )
             self._ensure_within_timeout(started)
             stage = "chunking"
-            chunks = chunk_pages(parsed.pages, max_chars=self._chunk_max_chars)
+            chunks = build_chunks(
+                parsed.pages,
+                target_chars=self._chunk_target_chars,
+                max_chars=self._chunk_max_chars,
+                overlap_chars=self._chunk_overlap_chars,
+            )
             self._ensure_within_timeout(started)
+            embedding_failed = False
+            try:
+                inputs = [build_embedding_text(metadata, chunk) for chunk in chunks]
+                embeddings = self._embedding_provider.embed_texts(inputs)
+            except EmbeddingUnavailableError:
+                embeddings = [None] * len(chunks)
+                embedding_failed = True
             stage = "writing_database"
             return self._write_material(
                 run_id=run_id,
@@ -137,6 +282,8 @@ class MaterialService:
                 metadata=metadata,
                 page_count=parsed.page_count,
                 chunks=chunks,
+                embeddings=embeddings,
+                embedding_failed=embedding_failed,
                 started=started,
             )
         except MaterialServiceError as error:
@@ -146,6 +293,39 @@ class MaterialService:
             mapped = DatabaseUnavailableError("The material database operation failed.")
             self._mark_failed(run_id, stage, mapped.error_code, str(mapped), started)
             raise mapped from error
+
+    def _existing_file_result(
+        self, run_id: str, stored: StoredFilePayload, started: float
+    ) -> IngestResult | None:
+        with self._session_factory() as session:
+            stored_file = find_stored_file(session, stored.sha256)
+            if stored_file is None:
+                return None
+            existing = find_document_by_file(session, stored_file.id)
+            if existing is None:
+                return None
+            document, version = existing
+            run = session.get(IngestionRun, run_id)
+            if run is None:
+                raise DatabaseUnavailableError("The ingestion run disappeared before commit.")
+            run.file_id = stored_file.id
+            run.document_id = document.id
+            run.status = "success"
+            run.stage = "duplicate"
+            run.duration_ms = int((monotonic() - started) * 1000)
+            run.finished_at = datetime.now(UTC)
+            session.commit()
+            return IngestResult(
+                status="duplicate",
+                document_id=document.id,
+                document_version_id=version.id,
+                file_id=stored_file.id,
+                page_count=version.page_count,
+                chunk_count=version.chunk_count,
+                duplicate_file=True,
+                searchable=version.searchable,
+                download_url=self.create_download_url(stored_file.id),
+            )
 
     def _existing_result(self, idempotency_key: str) -> IngestResult | None:
         try:
@@ -195,11 +375,12 @@ class MaterialService:
         metadata: IngestMetadata,
         page_count: int,
         chunks: list,
+        embeddings: list[list[float] | None],
+        embedding_failed: bool,
         started: float,
     ) -> IngestResult:
         with self._session_factory() as session:
             stored_file = find_stored_file(session, stored.sha256)
-            duplicate_file = stored_file is not None
             if stored_file is None:
                 stored_file = StoredFile(
                     id=_new_id("file"),
@@ -250,9 +431,14 @@ class MaterialService:
                         formula_status=chunk.formula_status,
                         has_figure=chunk.has_figure,
                         quality_flags=chunk.quality_flags,
+                        embedding=embedding,
+                        embedding_model=(
+                            None if embedding is None else self._embedding_provider.model_name
+                        ),
+                        embedding_version=None if embedding is None else "fastembed-0.8.1",
                         created_at=datetime.now(UTC),
                     )
-                    for chunk in chunks
+                    for chunk, embedding in zip(chunks, embeddings, strict=True)
                 ]
             )
             document.current_version_id = version.id
@@ -262,18 +448,21 @@ class MaterialService:
             run.file_id = stored_file.id
             run.document_id = document.id
             run.status = "success"
-            run.stage = "success"
+            run.stage = "embedding_failed" if embedding_failed else "success"
             run.duration_ms = int((monotonic() - started) * 1000)
             run.finished_at = datetime.now(UTC)
             session.commit()
             return IngestResult(
+                status="partial_success" if embedding_failed else "success",
                 document_id=document.id,
                 document_version_id=version.id,
                 file_id=stored_file.id,
                 page_count=page_count,
                 chunk_count=len(chunks),
-                duplicate_file=duplicate_file,
+                duplicate_file=False,
                 searchable=True,
+                retrieval_modes=["lexical"] if embedding_failed else ["lexical", "semantic"],
+                warning_code="EMBEDDING_FAILED" if embedding_failed else None,
             )
 
     def _mark_failed(

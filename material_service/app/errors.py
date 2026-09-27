@@ -47,3 +47,7 @@ class UnauthorizedError(MaterialServiceError):
 class InvalidArgumentError(MaterialServiceError):
     error_code = "INVALID_ARGUMENT"
 
+
+class TransferTokenInvalidError(MaterialServiceError):
+    error_code = "TRANSFER_TOKEN_INVALID"
+

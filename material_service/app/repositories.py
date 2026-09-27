@@ -21,6 +21,38 @@ def find_stored_file(session: Session, sha256: str) -> StoredFile | None:
     return session.scalar(select(StoredFile).where(StoredFile.sha256 == sha256))
 
 
+def find_document_by_file(
+    session: Session, file_id: str
+) -> tuple[Document, DocumentVersion] | None:
+    return session.execute(
+        select(Document, DocumentVersion)
+        .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+        .where(DocumentVersion.file_id == file_id)
+    ).one_or_none()
+
+
+def possible_duplicate_rows(
+    session: Session,
+    *,
+    school: str,
+    major: str,
+    course: str,
+    material_type: str,
+) -> list[tuple[Document, DocumentVersion]]:
+    return list(
+        session.execute(
+            select(Document, DocumentVersion)
+            .join(DocumentVersion, Document.current_version_id == DocumentVersion.id)
+            .where(
+                Document.school == school,
+                Document.major == major,
+                Document.course == course,
+                Document.material_type == material_type,
+            )
+        ).all()
+    )
+
+
 def load_successful_ingest_result(session: Session, run: IngestionRun) -> IngestResult:
     if run.status != "success" or run.document_id is None or run.file_id is None:
         raise ValueError("Ingestion run does not contain a successful result")
@@ -36,13 +68,22 @@ def load_successful_ingest_result(session: Session, run: IngestionRun) -> Ingest
         .where(DocumentVersion.file_id == run.file_id, DocumentVersion.id != version.id)
     )
     return IngestResult(
+        status=(
+            "duplicate"
+            if run.stage == "duplicate"
+            else "partial_success"
+            if run.stage == "embedding_failed"
+            else "success"
+        ),
         document_id=document.id,
         document_version_id=version.id,
         file_id=run.file_id,
         page_count=version.page_count,
         chunk_count=version.chunk_count,
-        duplicate_file=bool(previous_uses),
+        duplicate_file=run.stage == "duplicate" or bool(previous_uses),
         searchable=version.searchable,
+        retrieval_modes=["lexical"] if run.stage == "embedding_failed" else ["lexical", "semantic"],
+        warning_code="EMBEDDING_FAILED" if run.stage == "embedding_failed" else None,
     )
 
 
@@ -69,10 +110,12 @@ def list_materials(
         MaterialItem(
             document_id=document.id,
             title=document.title,
+            school=document.school,
+            major=document.major,
             course=document.course,
             unit=document.unit,
             source_name=document.source_name,
-            source_type=document.source_type,
+            material_type=document.material_type,
             page_count=version.page_count,
             chunk_count=version.chunk_count,
         )
@@ -121,7 +164,7 @@ def search_materials(
             page_start=chunk.page_start,
             page_end=chunk.page_end,
             source_name=document.source_name,
-            source_type=document.source_type,
+            material_type=document.material_type,
             quality_flags=chunk.quality_flags,
             score=float(rank or 0.0),
         )

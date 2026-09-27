@@ -5,14 +5,15 @@ class IngestMetadata(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     title: str = Field(min_length=1, max_length=255)
+    school: str = Field(min_length=1, max_length=255)
+    major: str = Field(min_length=1, max_length=255)
     course: str = Field(min_length=1, max_length=100)
     unit: str = Field(min_length=1, max_length=100)
-    source_name: str = Field(min_length=1, max_length=255)
-    source_type: str = Field(min_length=1, max_length=50)
+    material_type: str = Field(min_length=1, max_length=50)
+    source_name: str | None = Field(default=None, max_length=255)
     author: str | None = Field(default=None, max_length=255)
     publication_year: int | None = Field(default=None, ge=1000, le=9999)
     description: str | None = None
-    applicable_school: str | None = Field(default=None, max_length=255)
     is_official_source: bool = False
 
 
@@ -27,15 +28,35 @@ class IngestResult(BaseModel):
     chunk_count: int
     duplicate_file: bool
     searchable: bool
+    retrieval_modes: list[str] = Field(default_factory=lambda: ["lexical", "semantic"])
+    warning_code: str | None = None
+    download_url: str | None = None
+
+
+class PossibleDuplicate(BaseModel):
+    document_id: str
+    title: str
+    download_url: str
+
+
+class PrepareUploadResult(BaseModel):
+    status: str
+    intent_id: str | None = None
+    upload_url: str | None = None
+    expires_in_seconds: int | None = None
+    confirmation_id: str | None = None
+    possible_duplicates: list[PossibleDuplicate] = Field(default_factory=list)
 
 
 class MaterialItem(BaseModel):
     document_id: str
     title: str
+    school: str
+    major: str
     course: str
     unit: str
-    source_name: str
-    source_type: str
+    material_type: str
+    source_name: str | None
     page_count: int
     chunk_count: int
 
@@ -63,8 +84,8 @@ class SearchItem(BaseModel):
     document_title: str
     page_start: int
     page_end: int
-    source_name: str
-    source_type: str
+    source_name: str | None
+    material_type: str
     quality_flags: list[str]
     score: float
     score_type: str = "full_text_rank"
