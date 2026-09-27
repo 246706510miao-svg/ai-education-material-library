@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from material_service.app.api import router
 from material_service.app.config import Settings, get_settings
 from material_service.app.db import build_session_factory
+from material_service.app.embedding import FastEmbedProvider
 from material_service.app.errors import MaterialServiceError
 from material_service.app.services import MaterialService
 
@@ -19,6 +20,7 @@ ERROR_STATUS = {
     "TOO_MANY_PAGES": 422,
     "PDF_TEXT_NOT_EXTRACTABLE": 422,
     "DATABASE_UNAVAILABLE": 503,
+    "EMBEDDING_UNAVAILABLE": 503,
     "STORAGE_UNAVAILABLE": 503,
     "PDF_PROCESSING_TIMEOUT": 504,
     "INTERNAL_ERROR": 500,
@@ -45,6 +47,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Shared Material Service", version="0.1.0")
     app.state.settings = active_settings
     app.state.session_factory = session_factory
+    app.state.embedding_provider = FastEmbedProvider(
+        model_name=active_settings.embedding_model_name,
+        dimension=active_settings.embedding_dimension,
+        batch_size=active_settings.embedding_batch_size,
+    )
     app.state.material_service = MaterialService(
         session_factory=session_factory,
         storage_root=active_settings.material_storage_root,
