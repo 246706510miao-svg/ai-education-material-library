@@ -25,7 +25,19 @@ from material_service.app.repositories import (
     find_stored_file,
     load_successful_ingest_result,
 )
-from material_service.app.schemas import IngestMetadata, IngestResult
+from material_service.app.repositories import (
+    list_materials as list_material_rows,
+)
+from material_service.app.repositories import (
+    search_materials as search_material_rows,
+)
+from material_service.app.schemas import (
+    IngestMetadata,
+    IngestResult,
+    MaterialPage,
+    SearchRequest,
+    SearchResponse,
+)
 from material_service.app.storage import StoredFilePayload, store_pdf
 
 
@@ -49,6 +61,44 @@ class MaterialService:
         self._max_pdf_pages = max_pdf_pages
         self._chunk_max_chars = chunk_max_chars
         self._processing_timeout_seconds = processing_timeout_seconds
+
+    def list_materials(
+        self,
+        *,
+        course: str | None = None,
+        unit: str | None = None,
+        limit: int = 10,
+        cursor: str | None = None,
+    ) -> MaterialPage:
+        del cursor  # Cursor pagination is reserved; the first version is limit-based.
+        bounded_limit = min(max(limit, 1), 50)
+        try:
+            with self._session_factory() as session:
+                items = list_material_rows(
+                    session,
+                    course=course,
+                    unit=unit,
+                    limit=bounded_limit,
+                )
+            return MaterialPage(items=items)
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
+
+    def search_materials(self, request: SearchRequest) -> SearchResponse:
+        bounded_limit = min(request.limit, 50)
+        try:
+            with self._session_factory() as session:
+                items = search_material_rows(
+                    session,
+                    query=request.query,
+                    course=request.course,
+                    unit=request.unit,
+                    document_id=request.document_id,
+                    limit=bounded_limit,
+                )
+            return SearchResponse(status="success" if items else "not_found", items=items)
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
 
     def ingest_pdf(
         self,
