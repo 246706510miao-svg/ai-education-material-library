@@ -10,13 +10,13 @@ RUN groupadd --system material && useradd --system --gid material --home /app ma
 COPY pyproject.toml ./
 COPY material_service ./material_service
 COPY mcp_server ./mcp_server
-COPY frontend_poc ./frontend_poc
 RUN python -m pip install --no-cache-dir .
 
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
 
-RUN mkdir -p /data/materials && chown -R material:material /app /data/materials
+RUN mkdir -p /data/materials /data/models \
+    && chown -R material:material /app /data/materials /data/models
 
 USER material
 

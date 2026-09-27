@@ -32,7 +32,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["material_service", "mcp_server", "frontend_poc"]
+packages = ["material_service", "mcp_server", "evaluation"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
