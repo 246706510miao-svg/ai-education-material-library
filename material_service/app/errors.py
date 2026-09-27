@@ -27,3 +27,11 @@ class TooManyPagesError(MaterialServiceError):
 class PdfTextNotExtractableError(MaterialServiceError):
     error_code = "PDF_TEXT_NOT_EXTRACTABLE"
 
+
+class DatabaseUnavailableError(MaterialServiceError):
+    error_code = "DATABASE_UNAVAILABLE"
+
+
+class PdfProcessingTimeoutError(MaterialServiceError):
+    error_code = "PDF_PROCESSING_TIMEOUT"
+
