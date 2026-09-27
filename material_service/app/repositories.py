@@ -88,24 +88,51 @@ def load_successful_ingest_result(session: Session, run: IngestionRun) -> Ingest
 
 
 def list_materials_query(
-    *, course: str | None, unit: str | None, limit: int
+    *,
+    school: str | None,
+    major: str | None,
+    course: str | None,
+    unit: str | None,
+    material_type: str | None,
+    limit: int,
 ) -> Select[tuple[Document, DocumentVersion]]:
     statement = (
         select(Document, DocumentVersion)
         .join(DocumentVersion, Document.current_version_id == DocumentVersion.id)
         .where(DocumentVersion.searchable.is_(True))
     )
-    if course is not None:
-        statement = statement.where(Document.course == course)
-    if unit is not None:
-        statement = statement.where(Document.unit == unit)
+    for value, column in (
+        (school, Document.school),
+        (major, Document.major),
+        (course, Document.course),
+        (unit, Document.unit),
+        (material_type, Document.material_type),
+    ):
+        if value is not None:
+            statement = statement.where(column == value)
     return statement.order_by(Document.created_at.desc(), Document.id).limit(limit)
 
 
 def list_materials(
-    session: Session, *, course: str | None, unit: str | None, limit: int
+    session: Session,
+    *,
+    school: str | None,
+    major: str | None,
+    course: str | None,
+    unit: str | None,
+    material_type: str | None,
+    limit: int,
 ) -> list[MaterialItem]:
-    rows = session.execute(list_materials_query(course=course, unit=unit, limit=limit)).all()
+    rows = session.execute(
+        list_materials_query(
+            school=school,
+            major=major,
+            course=course,
+            unit=unit,
+            material_type=material_type,
+            limit=limit,
+        )
+    ).all()
     return [
         MaterialItem(
             document_id=document.id,

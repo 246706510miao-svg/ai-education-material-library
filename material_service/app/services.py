@@ -264,9 +264,12 @@ class MaterialService:
     def list_materials(
         self,
         *,
+        school: str | None = None,
+        major: str | None = None,
         course: str | None = None,
         unit: str | None = None,
-        limit: int = 10,
+        material_type: str | None = None,
+        limit: int = 5,
         cursor: str | None = None,
     ) -> MaterialPage:
         del cursor  # Cursor pagination is reserved; the first version is limit-based.
@@ -275,8 +278,11 @@ class MaterialService:
             with self._session_factory() as session:
                 items = list_material_rows(
                     session,
+                    school=school,
+                    major=major,
                     course=course,
                     unit=unit,
+                    material_type=material_type,
                     limit=bounded_limit,
                 )
             return MaterialPage(items=items)

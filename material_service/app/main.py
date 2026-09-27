@@ -1,3 +1,5 @@
+import hmac
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -11,6 +13,7 @@ from material_service.app.embedding import EmbeddingProvider, FastEmbedProvider
 from material_service.app.errors import MaterialServiceError
 from material_service.app.services import MaterialService
 from material_service.app.transfers import TransferTokenService
+from mcp_server.server import create_server
 
 ERROR_STATUS = {
     "UNAUTHORIZED": 401,
@@ -49,18 +52,15 @@ def create_app(
 ) -> FastAPI:
     active_settings = settings or get_settings()
     session_factory = build_session_factory(active_settings)
-    app = FastAPI(title="Shared Material Service", version="0.1.0")
-    app.state.settings = active_settings
-    app.state.session_factory = session_factory
-    app.state.embedding_provider = embedding_provider or FastEmbedProvider(
+    active_embedding_provider = embedding_provider or FastEmbedProvider(
         model_name=active_settings.embedding_model_name,
         dimension=active_settings.embedding_dimension,
         batch_size=active_settings.embedding_batch_size,
     )
-    app.state.transfer_service = TransferTokenService(
+    transfer_service = TransferTokenService(
         active_settings.transfer_signing_secret.get_secret_value().encode("utf-8")
     )
-    app.state.material_service = MaterialService(
+    material_service = MaterialService(
         session_factory=session_factory,
         storage_root=active_settings.material_storage_root,
         max_file_bytes=active_settings.max_file_bytes,
@@ -69,11 +69,25 @@ def create_app(
         chunk_max_chars=active_settings.chunk_max_chars,
         chunk_overlap_chars=active_settings.chunk_overlap_chars,
         processing_timeout_seconds=active_settings.processing_timeout_seconds,
-        embedding_provider=app.state.embedding_provider,
-        transfer_service=app.state.transfer_service,
+        embedding_provider=active_embedding_provider,
+        transfer_service=transfer_service,
         upload_url_ttl_seconds=active_settings.upload_url_ttl_seconds,
         download_url_ttl_seconds=active_settings.download_url_ttl_seconds,
     )
+    mcp = create_server(material_service)
+    mcp_app = mcp.streamable_http_app()
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        async with mcp_app.router.lifespan_context(mcp_app):
+            yield
+
+    app = FastAPI(title="Shared Material Service", version="0.1.0", lifespan=lifespan)
+    app.state.settings = active_settings
+    app.state.session_factory = session_factory
+    app.state.embedding_provider = active_embedding_provider
+    app.state.transfer_service = transfer_service
+    app.state.material_service = material_service
 
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -81,6 +95,19 @@ def create_app(
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         return response
+
+    @app.middleware("http")
+    async def mcp_bearer_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
+        if request.url.path == "/mcp" or request.url.path.startswith("/mcp/"):
+            supplied = request.headers.get("Authorization", "")
+            expected = (
+                "Bearer " + active_settings.material_service_api_token.get_secret_value()
+            )
+            if not hmac.compare_digest(supplied, expected):
+                return _error_response(
+                    request, "UNAUTHORIZED", "A valid Bearer token is required.", 401
+                )
+        return await call_next(request)
 
     @app.exception_handler(MaterialServiceError)
     async def material_error_handler(
@@ -96,5 +123,6 @@ def create_app(
         return _error_response(request, "INVALID_ARGUMENT", "Request parameters are invalid.", 422)
 
     app.include_router(router)
+    app.mount("/mcp", mcp_app)
     return app
 
