@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable, Sequence
 from math import isfinite
+from pathlib import Path
 from typing import Any, Protocol
 
 from material_service.app.errors import EmbeddingUnavailableError
@@ -15,10 +16,10 @@ class _EmbeddingModel(Protocol):
     def embed(self, texts: list[str], *, batch_size: int) -> Iterable[Sequence[float]]: ...
 
 
-def _default_model_factory(model_name: str) -> _EmbeddingModel:
+def _default_model_factory(model_name: str, cache_dir: Path) -> _EmbeddingModel:
     from fastembed import TextEmbedding
 
-    return TextEmbedding(model_name=model_name)
+    return TextEmbedding(model_name=model_name, cache_dir=str(cache_dir))
 
 
 class FastEmbedProvider:
@@ -30,17 +31,19 @@ class FastEmbedProvider:
         model_name: str,
         dimension: int,
         batch_size: int,
-        model_factory: Callable[[str], _EmbeddingModel] = _default_model_factory,
+        cache_dir: Path = Path("/data/models"),
+        model_factory: Callable[[str, Path], _EmbeddingModel] = _default_model_factory,
     ) -> None:
         self.model_name = model_name
         self.dimension = dimension
         self.batch_size = batch_size
+        self.cache_dir = cache_dir
         self._model_factory = model_factory
         self._model: _EmbeddingModel | None = None
 
     def _load_model(self) -> _EmbeddingModel:
         if self._model is None:
-            self._model = self._model_factory(self.model_name)
+            self._model = self._model_factory(self.model_name, self.cache_dir)
         return self._model
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:

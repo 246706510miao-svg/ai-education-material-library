@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -41,15 +42,17 @@ def test_provider_loads_once_and_returns_validated_vectors() -> None:
     model = FakeModel()
     factory_calls = 0
 
-    def factory(_model_name: str) -> FakeModel:
+    def factory(_model_name: str, cache_dir: Path) -> FakeModel:
         nonlocal factory_calls
         factory_calls += 1
+        assert cache_dir == Path("model-cache")
         return model
 
     provider = FastEmbedProvider(
         model_name="test-model",
         dimension=3,
         batch_size=2,
+        cache_dir=Path("model-cache"),
         model_factory=factory,
     )
 
@@ -71,7 +74,8 @@ def test_provider_maps_wrong_dimension_to_stable_error() -> None:
         model_name="wrong-model",
         dimension=3,
         batch_size=2,
-        model_factory=lambda _name: WrongDimensionModel(),
+        cache_dir=Path("model-cache"),
+        model_factory=lambda _name, _cache_dir: WrongDimensionModel(),
     )
 
     with pytest.raises(EmbeddingUnavailableError):

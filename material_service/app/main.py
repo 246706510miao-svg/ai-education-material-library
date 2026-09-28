@@ -56,6 +56,7 @@ def create_app(
         model_name=active_settings.embedding_model_name,
         dimension=active_settings.embedding_dimension,
         batch_size=active_settings.embedding_batch_size,
+        cache_dir=active_settings.embedding_cache_path,
     )
     transfer_service = TransferTokenService(
         active_settings.transfer_signing_secret.get_secret_value().encode("utf-8")

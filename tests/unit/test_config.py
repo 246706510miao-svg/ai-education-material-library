@@ -27,6 +27,7 @@ def test_settings_defaults_are_the_approved_remote_rag_limits(tmp_path: Path) ->
     )
     assert settings.embedding_dimension == 384
     assert settings.embedding_batch_size == 8
+    assert settings.embedding_cache_path == Path("/data/models")
 
 
 def test_transfer_signing_secret_is_required(tmp_path: Path) -> None:

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     )
     embedding_dimension: int = Field(default=384, gt=0)
     embedding_batch_size: int = Field(default=8, gt=0)
+    embedding_cache_path: Path = Path("/data/models")
 
 
 @lru_cache
