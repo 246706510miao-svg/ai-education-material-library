@@ -10,7 +10,7 @@ RUN groupadd --system material && useradd --system --gid material --home /app ma
 COPY pyproject.toml ./
 COPY material_service ./material_service
 COPY mcp_server ./mcp_server
-RUN python -m pip install --no-cache-dir .
+RUN python -m pip install --no-cache-dir --timeout 120 --retries 10 .
 
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
