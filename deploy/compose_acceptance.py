@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from uuid import uuid4
 
 import httpx
 import pymupdf
@@ -11,13 +12,14 @@ from mcp.client.streamable_http import streamable_http_client
 BASE_URL = os.getenv("MATERIAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 API_TOKEN = os.getenv("MATERIAL_SERVICE_API_TOKEN", "local-acceptance-token")
 HEADERS = {"Authorization": f"Bearer {API_TOKEN}"}
+RUN_ID = os.getenv("MATERIAL_ACCEPTANCE_RUN_ID", uuid4().hex[:8])
 METADATA = {
     "school": "南京理工大学",
     "major": "计算机科学与技术",
     "course": "高等数学",
     "unit": "多重积分",
     "material_type": "course_material",
-    "title": "Compose acceptance multiple integrals",
+    "title": f"Compose acceptance multiple integrals {RUN_ID}",
     "source_name": "synthetic acceptance",
 }
 
@@ -56,6 +58,12 @@ async def main() -> None:
                 "get_document_download",
             }
             prepared = await call(session, "prepare_material_upload", METADATA)
+            if prepared["status"] == "confirmation_required":
+                prepared = await call(
+                    session,
+                    "prepare_material_upload",
+                    {**METADATA, "confirmation_id": prepared["confirmation_id"]},
+                )
             assert prepared["status"] == "ready"
             content = pdf_bytes()
             async with httpx.AsyncClient(base_url=BASE_URL, timeout=130.0) as client:
