@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,14 +43,6 @@ class ParsedChunk:
     quality_flags: list[str]
 
 
-@dataclass(frozen=True, slots=True)
-class _Segment:
-    text: str
-    page: int
-    has_figure: bool
-    formula_may_be_incomplete: bool
-
-
 def extract_pdf(path: Path, max_pages: int) -> ParsedDocument:
     """Extract one-based text pages from a supported PDF."""
 
@@ -85,74 +76,17 @@ def extract_pdf(path: Path, max_pages: int) -> ParsedDocument:
     return ParsedDocument(pages=pages)
 
 
-def _segments(pages: list[ParsedPage], max_chars: int) -> list[_Segment]:
-    result: list[_Segment] = []
-    for page in pages:
-        paragraphs = [part.strip() for part in re.split(r"\n\s*\n", page.text) if part.strip()]
-        for paragraph in paragraphs:
-            formula_warning = page.has_figure or any(
-                hint in paragraph.casefold() for hint in FORMULA_HINTS
-            )
-            if len(paragraph) <= max_chars:
-                result.append(
-                    _Segment(paragraph, page.number, page.has_figure, formula_warning)
-                )
-                continue
-            for offset in range(0, len(paragraph), max_chars):
-                result.append(
-                    _Segment(
-                        paragraph[offset : offset + max_chars],
-                        page.number,
-                        page.has_figure,
-                        formula_warning,
-                    )
-                )
-    return result
-
-
 def chunk_pages(pages: list[ParsedPage], max_chars: int) -> list[ParsedChunk]:
-    """Combine paragraphs up to a bound while retaining their page range and warnings."""
+    """Compatibility wrapper for callers that do not request overlap."""
 
     if max_chars <= 0:
         raise ValueError("max_chars must be positive")
-    segments = _segments(pages, max_chars)
-    chunks: list[ParsedChunk] = []
-    current: list[_Segment] = []
+    from material_service.app.chunking import build_chunks
 
-    def flush() -> None:
-        if not current:
-            return
-        text = "\n\n".join(segment.text for segment in current)
-        has_figure = any(segment.has_figure for segment in current)
-        formula_warning = any(segment.formula_may_be_incomplete for segment in current)
-        quality_flags: list[str] = []
-        if has_figure:
-            quality_flags.append("HAS_FIGURE")
-        if formula_warning:
-            quality_flags.append("FORMULA_MAY_BE_INCOMPLETE")
-        chunks.append(
-            ParsedChunk(
-                chunk_index=len(chunks),
-                page_start=current[0].page,
-                page_end=current[-1].page,
-                text=text,
-                heading_path=None,
-                content_type="body",
-                text_quality="partial" if quality_flags else "complete",
-                formula_status="possibly_missing" if formula_warning else "preserved",
-                has_figure=has_figure,
-                quality_flags=quality_flags,
-            )
-        )
-        current.clear()
-
-    for segment in segments:
-        proposed_length = len(segment.text)
-        if current:
-            proposed_length += sum(len(item.text) for item in current) + 2 * len(current)
-        if current and proposed_length > max_chars:
-            flush()
-        current.append(segment)
-    flush()
-    return chunks
+    return build_chunks(
+        pages,
+        target_chars=max_chars,
+        max_chars=max_chars,
+        overlap_chars=0,
+    )
 

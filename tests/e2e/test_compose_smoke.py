@@ -15,6 +15,7 @@ def compose_config() -> dict:
             "POSTGRES_USER": "material",
             "POSTGRES_PASSWORD": "test-database-password",
             "MATERIAL_SERVICE_API_TOKEN": "test-api-token",
+            "TRANSFER_SIGNING_SECRET": "test-transfer-secret",
         }
     )
     completed = subprocess.run(
@@ -67,6 +68,30 @@ def test_compose_injects_secrets_and_waits_for_database_health() -> None:
 
     assert postgres_environment["POSTGRES_PASSWORD"] == "test-database-password"
     assert service["environment"]["MATERIAL_SERVICE_API_TOKEN"] == "test-api-token"
+    assert service["environment"]["TRANSFER_SIGNING_SECRET"] == "test-transfer-secret"
     assert service["depends_on"]["postgres"]["condition"] == "service_healthy"
     assert service["networks"].keys() >= {"default", "material_proxy"}
+
+
+def test_compose_uses_pgvector_and_exactly_one_application_worker() -> None:
+    """SH packaging must provide vector SQL while staying inside the 3.6 GiB host budget."""
+    config = compose_config()
+
+    assert config["services"]["postgres"]["image"] == "pgvector/pgvector:pg16"
+    command = config["services"]["material-service"].get("command", [])
+    assert "--workers" in command
+    assert command[command.index("--workers") + 1] == "1"
+
+
+def test_compose_accepts_the_354_page_evaluation_book() -> None:
+    """Deployment defaults must not override the application's 500-page POC limit."""
+    config = compose_config()
+
+    assert config["services"]["material-service"]["environment"]["MAX_PDF_PAGES"] == "500"
+    assert (
+        config["services"]["material-service"]["environment"][
+            "PROCESSING_TIMEOUT_SECONDS"
+        ]
+        == "600"
+    )
 

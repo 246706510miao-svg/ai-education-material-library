@@ -77,10 +77,12 @@ def test_document_version_number_is_unique_within_document(postgres_engine: Engi
         document = Document(
             id="doc_one",
             title="多重积分讲义",
+            school="南京理工大学",
+            major="计算机科学与技术",
             course="高等数学",
             unit="多重积分",
             source_name="课程资料整理",
-            source_type="course_material",
+            material_type="course_material",
             is_official_source=False,
             created_at=now,
         )
@@ -121,6 +123,59 @@ def test_document_version_number_is_unique_within_document(postgres_engine: Engi
             session.commit()
 
 
+def test_document_allows_only_one_version(postgres_engine: Engine) -> None:
+    """A logical document must not accumulate historical versions in the POC."""
+    now = datetime.now(UTC)
+    with Session(postgres_engine) as session:
+        file = stored_file("file_single_version", "d" * 64)
+        document = Document(
+            id="doc_single_version",
+            title="多重积分讲义",
+            school="南京理工大学",
+            major="计算机科学与技术",
+            course="高等数学",
+            unit="多重积分",
+            material_type="textbook",
+            is_official_source=False,
+            created_at=now,
+        )
+        session.add_all([file, document])
+        session.flush()
+        session.add_all(
+            [
+                DocumentVersion(
+                    id="docv_single_one",
+                    document_id=document.id,
+                    file_id=file.id,
+                    version_number=1,
+                    processing_status="ready",
+                    publication_status="approved",
+                    searchable=True,
+                    parser_version="pdf-parser-0.1",
+                    page_count=1,
+                    chunk_count=1,
+                    created_at=now,
+                ),
+                DocumentVersion(
+                    id="docv_single_two",
+                    document_id=document.id,
+                    file_id=file.id,
+                    version_number=2,
+                    processing_status="ready",
+                    publication_status="approved",
+                    searchable=True,
+                    parser_version="pdf-parser-0.1",
+                    page_count=1,
+                    chunk_count=1,
+                    created_at=now,
+                ),
+            ]
+        )
+
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
 def test_chunk_index_is_unique_within_document_version(postgres_engine: Engine) -> None:
     """Two chunks must not occupy the same ordered position in one version."""
     now = datetime.now(UTC)
@@ -129,10 +184,12 @@ def test_chunk_index_is_unique_within_document_version(postgres_engine: Engine) 
         document = Document(
             id="doc_chunks",
             title="多重积分例题",
+            school="南京理工大学",
+            major="计算机科学与技术",
             course="高等数学",
             unit="多重积分",
             source_name="课程资料整理",
-            source_type="course_material",
+            material_type="course_material",
             is_official_source=False,
             created_at=now,
         )

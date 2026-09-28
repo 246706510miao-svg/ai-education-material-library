@@ -13,6 +13,7 @@ def unavailable_settings(tmp_path: Path) -> Settings:
             "postgresql+psycopg://material:secret@127.0.0.1:1/unavailable?connect_timeout=1"
         ),
         material_service_api_token=SecretStr("health-token"),
+        transfer_signing_secret=SecretStr("health-transfer-secret"),
         material_storage_root=tmp_path / "materials",
     )
 

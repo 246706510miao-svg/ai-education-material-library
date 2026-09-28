@@ -32,6 +32,10 @@ class DatabaseUnavailableError(MaterialServiceError):
     error_code = "DATABASE_UNAVAILABLE"
 
 
+class EmbeddingUnavailableError(MaterialServiceError):
+    error_code = "EMBEDDING_UNAVAILABLE"
+
+
 class PdfProcessingTimeoutError(MaterialServiceError):
     error_code = "PDF_PROCESSING_TIMEOUT"
 
@@ -42,4 +46,8 @@ class UnauthorizedError(MaterialServiceError):
 
 class InvalidArgumentError(MaterialServiceError):
     error_code = "INVALID_ARGUMENT"
+
+
+class TransferTokenInvalidError(MaterialServiceError):
+    error_code = "TRANSFER_TOKEN_INVALID"
 

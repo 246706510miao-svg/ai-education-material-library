@@ -10,17 +10,17 @@ RUN groupadd --system material && useradd --system --gid material --home /app ma
 COPY pyproject.toml ./
 COPY material_service ./material_service
 COPY mcp_server ./mcp_server
-COPY frontend_poc ./frontend_poc
-RUN python -m pip install --no-cache-dir .
+RUN python -m pip install --no-cache-dir --timeout 120 --retries 10 .
 
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
 
-RUN mkdir -p /data/materials && chown -R material:material /app /data/materials
+RUN mkdir -p /data/materials /data/models \
+    && chown -R material:material /app /data/materials /data/models
 
 USER material
 
 EXPOSE 8000
 
-CMD ["uvicorn", "material_service.app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "material_service.app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 

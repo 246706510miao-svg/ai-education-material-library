@@ -7,7 +7,7 @@ from testcontainers.community.postgres import PostgresContainer
 
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
-    with PostgresContainer("postgres:16-alpine", driver="psycopg") as postgres:
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as postgres:
         yield postgres.get_connection_url()
 
 

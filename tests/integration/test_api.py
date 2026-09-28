@@ -30,12 +30,19 @@ def migrated_database(postgres_url: str, postgres_engine: Engine) -> Iterator[No
 
 @pytest.fixture
 def client(postgres_url: str, tmp_path: Path) -> TestClient:
+    class FakeEmbeddingProvider:
+        model_name = "test-embedding"
+
+        def embed_texts(self, texts: list[str]) -> list[list[float]]:
+            return [[0.0] * 384 for _text in texts]
+
     settings = Settings(
         database_url=SecretStr(postgres_url),
         material_service_api_token=SecretStr(TOKEN),
+        transfer_signing_secret=SecretStr("transfer-test-secret"),
         material_storage_root=tmp_path / "materials",
     )
-    return TestClient(create_app(settings))
+    return TestClient(create_app(settings, embedding_provider=FakeEmbeddingProvider()))
 
 
 def auth_headers(token: str = TOKEN) -> dict[str, str]:
@@ -45,10 +52,12 @@ def auth_headers(token: str = TOKEN) -> dict[str, str]:
 def ingest_data(key: str = "api-request") -> dict[str, str]:
     return {
         "title": "多重积分讲义",
+        "school": "南京理工大学",
+        "major": "计算机科学与技术",
         "course": "高等数学",
         "unit": "多重积分",
         "source_name": "课程资料整理",
-        "source_type": "course_material",
+        "material_type": "course_material",
         "idempotency_key": key,
     }
 
@@ -114,7 +123,13 @@ def test_search_not_found_is_a_normal_successful_response(client: TestClient) ->
     )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "not_found", "items": []}
+    assert response.json() == {
+        "status": "not_found",
+        "items": [],
+        "next_cursor": None,
+        "retrieval_modes": ["lexical", "semantic"],
+        "warning_code": None,
+    }
 
 
 def test_image_only_pdf_maps_to_the_stable_error_envelope(
@@ -134,4 +149,41 @@ def test_image_only_pdf_maps_to_the_stable_error_envelope(
     assert response.json()["error_code"] == "PDF_TEXT_NOT_EXTRACTABLE"
     assert "Traceback" not in response.text
     assert response.headers["X-Request-ID"] == response.json()["request_id"]
+
+
+def test_prepare_upload_returns_signed_url_and_result_can_be_polled(
+    client: TestClient, tmp_path: Path
+) -> None:
+    """The public upload flow must move PDF bytes through a short-lived transfer URL."""
+    prepared = client.post(
+        "/v1/materials/uploads/prepare",
+        headers=auth_headers(),
+        json={
+            key: value
+            for key, value in ingest_data("unused").items()
+            if key != "idempotency_key"
+        },
+    )
+    assert prepared.status_code == 200
+    body = prepared.json()
+    assert body["status"] == "ready"
+    assert body["intent_id"]
+    assert body["upload_url"].startswith("/transfers/uploads/")
+
+    pdf = create_text_pdf(tmp_path / "signed-upload.pdf")
+    uploaded = client.put(
+        body["upload_url"],
+        content=pdf.read_bytes(),
+        headers={"Content-Type": "application/pdf", "X-Filename": pdf.name},
+    )
+    assert uploaded.status_code == 202
+    assert uploaded.json()["status"] == "processing"
+    assert uploaded.json()["intent_id"] == body["intent_id"]
+
+    result = client.get(
+        f"/v1/materials/uploads/{body['intent_id']}", headers=auth_headers()
+    )
+    assert result.status_code == 200
+    assert result.json()["status"] in {"success", "partial_success"}
+    assert result.json()["document_id"]
 

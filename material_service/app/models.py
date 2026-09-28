@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -40,14 +41,15 @@ class Document(Base):
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    school: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    major: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     course: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     unit: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    material_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    source_name: Mapped[str | None] = mapped_column(String(255))
     author: Mapped[str | None] = mapped_column(String(255))
     publication_year: Mapped[int | None] = mapped_column(Integer)
     description: Mapped[str | None] = mapped_column(Text)
-    applicable_school: Mapped[str | None] = mapped_column(String(255))
     is_official_source: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     current_version_id: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -57,7 +59,14 @@ class Document(Base):
             "publication_year IS NULL OR publication_year BETWEEN 1000 AND 9999",
             name="ck_documents_publication_year",
         ),
-        Index("ix_documents_scope", "course", "unit"),
+        Index(
+            "ix_documents_scope",
+            "school",
+            "major",
+            "course",
+            "unit",
+            "material_type",
+        ),
     )
 
 
@@ -84,6 +93,7 @@ class DocumentVersion(Base):
         UniqueConstraint(
             "document_id", "version_number", name="uq_document_versions_document_number"
         ),
+        UniqueConstraint("document_id", name="uq_document_versions_document"),
         CheckConstraint("version_number > 0", name="ck_document_versions_number_positive"),
         CheckConstraint("page_count > 0", name="ck_document_versions_pages_positive"),
         CheckConstraint("chunk_count >= 0", name="ck_document_versions_chunks_nonnegative"),
@@ -109,6 +119,9 @@ class DocumentChunk(Base):
     quality_flags: Mapped[list[str]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=sql_text("'[]'::jsonb")
     )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384))
+    embedding_model: Mapped[str | None] = mapped_column(String(255))
+    embedding_version: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
@@ -119,6 +132,12 @@ class DocumentChunk(Base):
         CheckConstraint("page_start > 0", name="ck_document_chunks_page_start_positive"),
         CheckConstraint("page_end >= page_start", name="ck_document_chunks_page_order"),
         Index("ix_document_chunks_version_quality", "document_version_id", "text_quality"),
+        Index(
+            "ix_document_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
 

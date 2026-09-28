@@ -2,7 +2,7 @@ name: material-library
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
@@ -25,15 +25,35 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MATERIAL_SERVICE_API_TOKEN: ${MATERIAL_SERVICE_API_TOKEN:?MATERIAL_SERVICE_API_TOKEN is required}
+      TRANSFER_SIGNING_SECRET: ${TRANSFER_SIGNING_SECRET:?TRANSFER_SIGNING_SECRET is required}
       MATERIAL_STORAGE_ROOT: /data/materials
       MAX_FILE_BYTES: ${MAX_FILE_BYTES:-52428800}
-      MAX_PDF_PAGES: ${MAX_PDF_PAGES:-300}
-      PROCESSING_TIMEOUT_SECONDS: ${PROCESSING_TIMEOUT_SECONDS:-120}
-      DEFAULT_SEARCH_LIMIT: ${DEFAULT_SEARCH_LIMIT:-10}
-      MAX_SEARCH_LIMIT: ${MAX_SEARCH_LIMIT:-50}
-      CHUNK_MAX_CHARS: ${CHUNK_MAX_CHARS:-1500}
+      MAX_PDF_PAGES: ${MAX_PDF_PAGES:-500}
+      PROCESSING_TIMEOUT_SECONDS: ${PROCESSING_TIMEOUT_SECONDS:-600}
+      DEFAULT_SEARCH_LIMIT: ${DEFAULT_SEARCH_LIMIT:-5}
+      MAX_SEARCH_LIMIT: ${MAX_SEARCH_LIMIT:-20}
+      CHUNK_TARGET_CHARS: ${CHUNK_TARGET_CHARS:-900}
+      CHUNK_MAX_CHARS: ${CHUNK_MAX_CHARS:-1200}
+      CHUNK_OVERLAP_CHARS: ${CHUNK_OVERLAP_CHARS:-150}
+      UPLOAD_URL_TTL_SECONDS: ${UPLOAD_URL_TTL_SECONDS:-600}
+      DOWNLOAD_URL_TTL_SECONDS: ${DOWNLOAD_URL_TTL_SECONDS:-600}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-384}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-8}
+      EMBEDDING_CACHE_PATH: /data/models
+    command:
+      - uvicorn
+      - material_service.app.main:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
     volumes:
       - material_files:/data/materials
+      - embedding_models:/data/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,6 +80,7 @@ services:
 volumes:
   postgres_data:
   material_files:
+  embedding_models:
 
 networks:
   material_proxy:
