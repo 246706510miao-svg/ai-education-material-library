@@ -19,6 +19,9 @@ def create_server(service: MaterialService) -> FastMCP:
         instructions=(
             "Search this shared course-material library before answering course-content "
             "questions. Cite document titles and PDF page ranges from retrieved evidence. "
+            "If the user omits school or major, use 南京理工大学 and 计算机科学与技术, "
+            "state that default scope, and explain that providing their school and major "
+            "can produce more precise results. Explicit user scope always overrides defaults. "
             "Use prepare_material_upload before transferring a PDF."
         ),
         stateless_http=True,
@@ -96,8 +99,8 @@ def create_server(service: MaterialService) -> FastMCP:
     @server.tool(structured_output=True)
     def search_course_material(
         query: str,
-        school: str | None = None,
-        major: str | None = None,
+        school: str = "南京理工大学",
+        major: str = "计算机科学与技术",
         course: str | None = None,
         unit: str | None = None,
         material_type: str | None = None,
@@ -106,7 +109,7 @@ def create_server(service: MaterialService) -> FastMCP:
         cursor: str | None = None,
         debug: bool = False,
     ) -> dict[str, Any]:
-        """Hybrid-search source chunks and return traceable page-level evidence."""
+        """Search evidence in a school/major scope; defaults to NJUST computer science."""
         return _json(
             service.search_materials(
                 SearchRequest(

@@ -82,3 +82,16 @@ def test_compose_uses_pgvector_and_exactly_one_application_worker() -> None:
     assert "--workers" in command
     assert command[command.index("--workers") + 1] == "1"
 
+
+def test_compose_accepts_the_354_page_evaluation_book() -> None:
+    """Deployment defaults must not override the application's 500-page POC limit."""
+    config = compose_config()
+
+    assert config["services"]["material-service"]["environment"]["MAX_PDF_PAGES"] == "500"
+    assert (
+        config["services"]["material-service"]["environment"][
+            "PROCESSING_TIMEOUT_SECONDS"
+        ]
+        == "600"
+    )
+

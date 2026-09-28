@@ -1,6 +1,6 @@
 materials.for-fdd.xyz {
     request_body {
-        max_size 50MB
+        max_size 53MB
     }
 
     handle /mcp* {

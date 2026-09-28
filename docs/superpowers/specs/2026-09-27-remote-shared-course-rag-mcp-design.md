@@ -99,7 +99,7 @@ embedding 输入拼接学校、专业、课程、单元、资料标题、章节�
 
 ## 8. 上传与下载通道
 
-`prepare_material_upload` 签发一次性上传令牌。上传请求使用 `PUT /transfers/uploads/{token}` 传送 `application/pdf` 字节；令牌短期有效、单次使用，并绑定元数据、文件名和大小上限。PUT 同步执行保存、解析、切块、embedding 和入库；最长 120 秒。
+`prepare_material_upload` 签发一次性上传令牌。上传请求使用 `PUT /transfers/uploads/{token}` 传送 `application/pdf` 字节；令牌短期有效、单次使用，并绑定元数据和大小上限。PUT 将文件写入服务端暂存区后返回 `202 processing`，后台完成解析、切块、embedding 和入库；客户端通过 `get_upload_result` 获取 `processing`、`success`、`partial_success`、`duplicate` 或 `failed` 结果。后台处理上限为 600 秒。
 
 `get_document_download` 签发短期下载令牌，`GET /transfers/downloads/{token}` 流式返回当前原件。上传和下载 URL 是 MCP 动态结果，不是合作方需要预先配置的第二入口。
 

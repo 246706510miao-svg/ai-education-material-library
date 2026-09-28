@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -214,4 +215,53 @@ def test_database_write_failure_rolls_back_material_and_records_failure(
         assert run is not None
         assert run.status == "failed"
         assert run.error_code == "DATABASE_UNAVAILABLE"
+
+
+def test_get_upload_result_returns_processing_for_a_running_intent(
+    service: MaterialService, postgres_engine: Engine
+) -> None:
+    """Polling a queued upload must return a stable processing state, not HTTP 500."""
+    with Session(postgres_engine) as session:
+        session.add(
+            IngestionRun(
+                id="run_pending",
+                idempotency_key="intent-pending",
+                status="running",
+                stage="queued",
+                created_at=datetime.now(UTC),
+            )
+        )
+        session.commit()
+
+    result = service.get_upload_result("intent-pending")
+
+    assert result.status == "processing"
+    assert result.intent_id == "intent-pending"
+    assert result.stage == "queued"
+
+
+def test_get_upload_result_returns_structured_failure(
+    service: MaterialService, postgres_engine: Engine
+) -> None:
+    """Polling a failed upload must expose its stable code without raising ValueError."""
+    with Session(postgres_engine) as session:
+        session.add(
+            IngestionRun(
+                id="run_failed",
+                idempotency_key="intent-failed",
+                status="failed",
+                stage="extracting",
+                error_code="PDF_TEXT_NOT_EXTRACTABLE",
+                error_message="No extractable text.",
+                created_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+            )
+        )
+        session.commit()
+
+    result = service.get_upload_result("intent-failed")
+
+    assert result.status == "failed"
+    assert result.error_code == "PDF_TEXT_NOT_EXTRACTABLE"
+    assert result.error_message == "No extractable text."
 

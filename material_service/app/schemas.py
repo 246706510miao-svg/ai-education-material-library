@@ -33,6 +33,16 @@ class IngestResult(BaseModel):
     download_url: str | None = None
 
 
+class UploadStatus(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    status: str
+    intent_id: str
+    stage: str
+    error_code: str | None = None
+    error_message: str | None = None
+
+
 class PossibleDuplicate(BaseModel):
     document_id: str
     title: str

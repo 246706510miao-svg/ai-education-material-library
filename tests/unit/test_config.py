@@ -13,8 +13,8 @@ def test_settings_defaults_are_the_approved_remote_rag_limits(tmp_path: Path) ->
     )
 
     assert settings.max_file_bytes == 50 * 1024 * 1024
-    assert settings.max_pdf_pages == 300
-    assert settings.processing_timeout_seconds == 120
+    assert settings.max_pdf_pages == 500
+    assert settings.processing_timeout_seconds == 600
     assert settings.default_search_limit == 5
     assert settings.max_search_limit == 20
     assert settings.chunk_target_chars == 900

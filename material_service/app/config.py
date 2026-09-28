@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     transfer_signing_secret: SecretStr
     material_storage_root: Path
     max_file_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
-    max_pdf_pages: int = Field(default=300, gt=0)
-    processing_timeout_seconds: int = Field(default=120, gt=0)
+    max_pdf_pages: int = Field(default=500, gt=0)
+    processing_timeout_seconds: int = Field(default=600, gt=0)
     default_search_limit: int = Field(default=5, gt=0)
     max_search_limit: int = Field(default=20, gt=0)
     chunk_target_chars: int = Field(default=900, gt=0)

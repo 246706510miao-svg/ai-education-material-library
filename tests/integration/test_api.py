@@ -176,12 +176,14 @@ def test_prepare_upload_returns_signed_url_and_result_can_be_polled(
         content=pdf.read_bytes(),
         headers={"Content-Type": "application/pdf", "X-Filename": pdf.name},
     )
-    assert uploaded.status_code == 200
-    assert uploaded.json()["status"] in {"success", "partial_success"}
+    assert uploaded.status_code == 202
+    assert uploaded.json()["status"] == "processing"
+    assert uploaded.json()["intent_id"] == body["intent_id"]
 
     result = client.get(
         f"/v1/materials/uploads/{body['intent_id']}", headers=auth_headers()
     )
     assert result.status_code == 200
-    assert result.json()["document_id"] == uploaded.json()["document_id"]
+    assert result.json()["status"] in {"success", "partial_success"}
+    assert result.json()["document_id"]
 

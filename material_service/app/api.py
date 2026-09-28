@@ -1,7 +1,7 @@
 from tempfile import SpooledTemporaryFile
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +21,7 @@ from material_service.app.schemas import (
     PrepareUploadResult,
     SearchRequest,
     SearchResponse,
+    UploadStatus,
 )
 from material_service.app.services import MaterialService
 
@@ -102,8 +103,10 @@ def prepare_upload(
     return get_service(request).prepare_material_upload(metadata, confirmation_id)
 
 
-@protected.get("/materials/uploads/{intent_id}", response_model=IngestResult)
-def get_upload_result(request: Request, intent_id: str) -> IngestResult:
+@protected.get(
+    "/materials/uploads/{intent_id}", response_model=IngestResult | UploadStatus
+)
+def get_upload_result(request: Request, intent_id: str) -> IngestResult | UploadStatus:
     return get_service(request).get_upload_result(intent_id)
 
 
@@ -124,8 +127,10 @@ def get_document_download(request: Request, document_id: str) -> DocumentDownloa
     return get_service(request).get_document_download(document_id)
 
 
-@router.put("/transfers/uploads/{token}", response_model=IngestResult)
-async def put_upload(request: Request, token: str) -> IngestResult:
+@router.put("/transfers/uploads/{token}", response_model=UploadStatus, status_code=202)
+async def put_upload(
+    request: Request, token: str, background_tasks: BackgroundTasks
+) -> UploadStatus:
     max_bytes = request.app.state.settings.max_file_bytes
     total = 0
     with SpooledTemporaryFile(max_size=1024 * 1024, mode="w+b") as stream:
@@ -135,10 +140,17 @@ async def put_upload(request: Request, token: str) -> IngestResult:
                 raise FileTooLargeError(f"PDF exceeds the {max_bytes}-byte limit.")
             stream.write(chunk)
         stream.seek(0)
-        return get_service(request).put_upload(
+        service = get_service(request)
+        staged = service.stage_upload(
             token,
             stream,
             request.headers.get("X-Filename", "document.pdf"),
+        )
+        background_tasks.add_task(service.process_staged_upload, staged)
+        return UploadStatus(
+            status="processing",
+            intent_id=staged.intent_id,
+            stage="queued",
         )
 
 

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic
@@ -59,6 +60,7 @@ from material_service.app.schemas import (
     SearchItem,
     SearchRequest,
     SearchResponse,
+    UploadStatus,
 )
 from material_service.app.storage import StoredFilePayload, store_pdf
 from material_service.app.transfers import TransferTokenService
@@ -66,6 +68,14 @@ from material_service.app.transfers import TransferTokenService
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
+
+
+@dataclass(frozen=True)
+class StagedUpload:
+    intent_id: str
+    path: Path
+    original_name: str
+    metadata: IngestMetadata
 
 
 class MaterialService:
@@ -227,17 +237,67 @@ class MaterialService:
             expires_in_seconds=self._upload_url_ttl_seconds,
         )
 
-    def put_upload(self, token: str, stream: BinaryIO, original_name: str) -> IngestResult:
+    def stage_upload(
+        self, token: str, stream: BinaryIO, original_name: str
+    ) -> StagedUpload:
         payload = self._transfer_service.consume_upload(token)
         metadata = IngestMetadata.model_validate(payload["metadata"])
-        return self.ingest_pdf(stream, original_name, metadata, str(payload["intent_id"]))
+        intent_id = str(payload["intent_id"])
+        run_id = self._create_run(intent_id, stage="queued")
+        pending_root = self._storage_root / ".pending"
+        pending_root.mkdir(parents=True, exist_ok=True)
+        path = pending_root / f"{run_id}.pdf"
+        try:
+            with path.open("wb") as target:
+                while chunk := stream.read(1024 * 1024):
+                    target.write(chunk)
+        except OSError as error:
+            self._mark_failed(
+                run_id, "staging_file", "STORAGE_UNAVAILABLE", str(error), monotonic()
+            )
+            raise
+        return StagedUpload(
+            intent_id=intent_id,
+            path=path,
+            original_name=original_name,
+            metadata=metadata,
+        )
 
-    def get_upload_result(self, intent_id: str) -> IngestResult:
+    def process_staged_upload(self, staged: StagedUpload) -> None:
+        try:
+            with staged.path.open("rb") as stream:
+                self._process_pdf(
+                    stream,
+                    staged.original_name,
+                    staged.metadata,
+                    staged.intent_id,
+                    self._run_id_for_intent(staged.intent_id),
+                )
+        except MaterialServiceError:
+            return
+        finally:
+            staged.path.unlink(missing_ok=True)
+
+    def get_upload_result(self, intent_id: str) -> IngestResult | UploadStatus:
         try:
             with self._session_factory() as session:
                 run = find_ingestion_run(session, intent_id)
                 if run is None:
                     raise InvalidArgumentError("The upload intent was not found.")
+                if run.status == "running":
+                    return UploadStatus(
+                        status="processing",
+                        intent_id=intent_id,
+                        stage=run.stage,
+                    )
+                if run.status == "failed":
+                    return UploadStatus(
+                        status="failed",
+                        intent_id=intent_id,
+                        stage=run.stage,
+                        error_code=run.error_code,
+                        error_message=run.error_message,
+                    )
                 return load_successful_ingest_result(session, run)
         except InvalidArgumentError:
             raise
@@ -388,6 +448,17 @@ class MaterialService:
         if existing is not None:
             return existing
         run_id = self._create_run(idempotency_key)
+        return self._process_pdf(stream, original_name, metadata, idempotency_key, run_id)
+
+    def _process_pdf(
+        self,
+        stream: BinaryIO,
+        original_name: str,
+        metadata: IngestMetadata,
+        idempotency_key: str,
+        run_id: str,
+    ) -> IngestResult:
+        del idempotency_key
         started = monotonic()
         stage = "storing_file"
         try:
@@ -422,6 +493,7 @@ class MaterialService:
             except EmbeddingUnavailableError:
                 embeddings = [None] * len(chunks)
                 embedding_failed = True
+            self._ensure_within_timeout(started)
             stage = "writing_database"
             return self._write_material(
                 run_id=run_id,
@@ -492,7 +564,7 @@ class MaterialService:
         except SQLAlchemyError as error:
             raise DatabaseUnavailableError("The material database is unavailable.") from error
 
-    def _create_run(self, idempotency_key: str) -> str:
+    def _create_run(self, idempotency_key: str, *, stage: str = "validating_file") -> str:
         run_id = _new_id("run")
         try:
             with self._session_factory() as session:
@@ -501,7 +573,7 @@ class MaterialService:
                         id=run_id,
                         idempotency_key=idempotency_key,
                         status="running",
-                        stage="validating_file",
+                        stage=stage,
                         created_at=datetime.now(UTC),
                     )
                 )
@@ -511,6 +583,18 @@ class MaterialService:
             raise DatabaseUnavailableError(
                 "A concurrent ingestion used the same idempotency key; retry the request."
             ) from error
+        except SQLAlchemyError as error:
+            raise DatabaseUnavailableError("The material database is unavailable.") from error
+
+    def _run_id_for_intent(self, intent_id: str) -> str:
+        try:
+            with self._session_factory() as session:
+                run = find_ingestion_run(session, intent_id)
+                if run is None:
+                    raise InvalidArgumentError("The upload intent was not found.")
+                return run.id
+        except InvalidArgumentError:
+            raise
         except SQLAlchemyError as error:
             raise DatabaseUnavailableError("The material database is unavailable.") from error
 
