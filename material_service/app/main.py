@@ -107,6 +107,9 @@ def create_app(
                 return _error_response(
                     request, "UNAUTHORIZED", "A valid Bearer token is required.", 401
                 )
+            if request.url.path == "/mcp":
+                request.scope["path"] = "/mcp/"
+                request.scope["raw_path"] = b"/mcp/"
         return await call_next(request)
 
     @app.exception_handler(MaterialServiceError)

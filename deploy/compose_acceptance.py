@@ -1,14 +1,16 @@
 """Run a real six-tool acceptance flow from inside the application container."""
 
 import asyncio
+import os
 
 import httpx
 import pymupdf
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-BASE_URL = "http://127.0.0.1:8000"
-HEADERS = {"Authorization": "Bearer local-acceptance-token"}
+BASE_URL = os.getenv("MATERIAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+API_TOKEN = os.getenv("MATERIAL_SERVICE_API_TOKEN", "local-acceptance-token")
+HEADERS = {"Authorization": f"Bearer {API_TOKEN}"}
 METADATA = {
     "school": "南京理工大学",
     "major": "计算机科学与技术",

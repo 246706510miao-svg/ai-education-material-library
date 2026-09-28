@@ -49,7 +49,8 @@ def initialize(client: TestClient, token: str | None):  # type: ignore[no-untype
 def test_remote_mcp_requires_bearer_and_initializes(tmp_path: Path) -> None:
     """The one public MCP URL must reject anonymous clients and accept the shared key."""
     with TestClient(
-        create_app(settings(tmp_path), embedding_provider=FakeEmbeddingProvider())
+        create_app(settings(tmp_path), embedding_provider=FakeEmbeddingProvider()),
+        follow_redirects=False,
     ) as client:
         denied = initialize(client, None)
         accepted = initialize(client, "mcp-secret")
