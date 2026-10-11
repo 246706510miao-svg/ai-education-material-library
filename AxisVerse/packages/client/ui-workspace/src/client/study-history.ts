@@ -37,7 +37,15 @@ export function studyTopic(title: string): StudyTopic {
  * @param now - current local clock, in milliseconds.
  * @returns records newest first with topic hints and non-overlapping groups.
  */
-export function studyRecords(list: SessionListState, archived: readonly SessionId[], reviewIds: readonly SessionId[], now: number) {
+export function studyRecords(list: SessionListState, archived: readonly SessionId[], reviewIds: readonly SessionId[], now: number): Array<{
+  id: SessionId
+  title: string
+  updatedAt: number
+  review: boolean
+  topic: StudyTopic
+  group: StudyGroup
+  selected: boolean
+}> {
   const today = new Date(now)
   today.setHours(0, 0, 0, 0)
   const week = new Date(today)
