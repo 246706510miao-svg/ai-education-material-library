@@ -110,7 +110,7 @@ class RegionProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_configured_mcp_tool_creates_a_real_image(self):
         with tempfile.TemporaryDirectory() as directory:
             target=Path(directory)
-            settings=Settings(ROOT/'output/pdf/教材第九章-检索材料.json',5,200,'https://study.example/images',(target,),FONT if FONT.exists() else None,101)
+            settings=Settings(ROOT/'apps/web/axisverse-mcp/data/verified-excerpts.json',5,200,'https://study.example/images',(target,),FONT if FONT.exists() else None,101)
             async with Client(build_server(settings)) as client:
                 self.assertIn('plot_integral_region',{tool.name for tool in (await client.list_tools()).tools})
                 result=await client.call_tool('plot_integral_region',{'inequalities':['x**2+y**2<=4','y>=x'],'x_min':-2.5,'x_max':2.5,'y_min':-2.5,'y_max':2.5})

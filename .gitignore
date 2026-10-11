@@ -1,0 +1,5 @@
+# Private acceptance workspaces and local demo PDFs
+.codex-test-tmp/
+资料/
+.env
+*.local.json

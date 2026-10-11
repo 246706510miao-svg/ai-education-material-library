@@ -22,7 +22,7 @@ class MaterialServiceTests(unittest.IsolatedAsyncioTestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="axisverse-mcp-")
         self.addCleanup(self.temp.cleanup)
         self.corpus = Path(self.temp.name) / "materials.json"
-        shutil.copyfile(ROOT / "output/pdf/教材第九章-检索材料.json", self.corpus)
+        shutil.copyfile(ROOT / "apps/web/axisverse-mcp/data/verified-excerpts.json", self.corpus)
         self.settings = Settings(self.corpus, max_results=5, max_query_chars=200)
 
     async def test_stdio_discovers_and_returns_verified_source(self):
