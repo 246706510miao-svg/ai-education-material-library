@@ -1,0 +1,6 @@
+- menu:
+  - text: Add
+  - menuitem "Upload a problem image Read a problem or your working"
+  - menuitem "Add study materials Save to my library":
+    - img
+    - text: Add study materials Save to my library

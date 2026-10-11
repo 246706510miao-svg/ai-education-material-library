@@ -1,0 +1,39 @@
+# Launch from the repository root. AXISVERSE_MCP_PYTHON selects a Python with mcp installed.
+# The MCP service reads the configured JSON corpus; retrieved excerpts enter tool-result events.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    complete: true
+    includeRuntimeContext: false
+    prefix: !!js >-
+      process.getBuiltinModule('node:fs').readFileSync(process.cwd() + '/apps/web/axisverse-presets/axisverse/tutor-prompt.txt', 'utf8') + '\n本次高数演示共享资料目录（文档编号仅用于工具参数，讲解前仍须检索正文）：\n' + JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(process.getBuiltinModule('node:fs').readFileSync(process.cwd() + '/apps/web/axisverse-mcp/data/calculus-demo.json', 'utf8'))).filter(([key]) => key === 'exam' || key === 'solution').map(([key, value]) => [key, {title: value.title, document_id: value.document_id}])))
+
+- id: mcp-axisverse-materials
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: axisverse
+    transport: stdio
+    command: !!js process.env.AXISVERSE_MCP_PYTHON || 'python'
+    args: !!js >-
+      ['-X', 'utf8', '-u', process.cwd() + '/apps/web/axisverse-mcp/server.py',
+      '--corpus', process.env.AXISVERSE_MATERIAL_PATH || process.cwd() + '/apps/web/axisverse-mcp/data/verified-excerpts.json',
+      '--max-results', '5', '--max-query-chars', '200',
+      '--asset-base-url', process.env.AXISVERSE_ASSET_BASE_URL || 'http://127.0.0.1:3082/axisverse/diagrams',
+      '--plot-output-dir', process.cwd() + '/apps/web/public/axisverse/diagrams',
+      '--plot-output-dir', process.cwd() + '/apps/web/dist/axisverse/diagrams',
+      ...(process.env.AXISVERSE_PLOT_FONT ? ['--plot-font', process.env.AXISVERSE_PLOT_FONT] : [])]
+    toolCallTimeoutMs: 15000
+    failOnStartupError: true
+
+# Connection settings stay outside the repository; see axisverse-mcp/service.md.
+- id: mcp-axisverse-course-materials
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: course_materials
+    transport: streamable-http
+    url: !!js >-
+      JSON.parse(process.getBuiltinModule('node:fs').readFileSync(process.env.AXISVERSE_COURSE_MCP_CONFIG || process.getBuiltinModule('node:os').homedir() + '/.dsh/axisverse-course-mcp.json', 'utf8')).url
+    headers: !!js >-
+      JSON.parse(process.getBuiltinModule('node:fs').readFileSync(process.env.AXISVERSE_COURSE_MCP_CONFIG || process.getBuiltinModule('node:os').homedir() + '/.dsh/axisverse-course-mcp.json', 'utf8')).headers
+    toolCallTimeoutMs: 60000
+    failOnStartupError: true

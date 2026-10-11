@@ -1,0 +1,49 @@
+- banner:
+  - button "New session":
+    - strong: AxisVerse
+    - text: · 一纸宇宙
+  - navigation "Global panels":
+    - button "New session":
+      - img
+      - text: New Session
+    - group: History
+    - button "Plugins"
+    - button "Settings":
+      - img
+      - text: Settings
+- banner:
+  - button "Open right sidebar":
+    - img
+- text: IT STARTS WITH A QUESTION.
+- heading "Question → Insight" [level=1]:
+  - text: Question
+  - emphasis: →
+  - text: Insight
+- slider "Drag to reveal the blue text": "0"
+- paragraph: A little curiosity. A clearer way forward.
+- button "Choose workspace":
+  - img
+  - text: workspace
+  - img
+- button "Standard mode":
+  - img
+  - text: Standard mode
+  - img
+- textbox "A problem, your working, or just a little question…":
+  - paragraph
+- button "Add files or run commands":
+  - img
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current DeepSeek-V4-Flash":
+  - text: DeepSeek-V4-Flash
+  - img
+- button "Send message" [disabled]
+- region "A little question to warm up":
+  - text: A little question to warm up
+  - button "Make the region clear":
+    - strong: Make the region clear
+  - button "Try another direction":
+    - strong: Try another direction
+  - button "Find where I went wrong":
+    - strong: Find where I went wrong
+  - text: Textbook photos · Answers use verified excerpts; check the original page

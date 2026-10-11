@@ -1,0 +1,14 @@
+- dialog "Summarize material":
+  - heading "Summarize material" [level=2]
+  - button "Close course materials":
+    - img
+  - button "Back to course materials"
+  - heading "Calculus_chapter9_original.pdf" [level=3]
+  - paragraph: Select headings to summarize in their original order. The summary will appear in the conversation.
+  - button "Select all" [disabled]
+  - button "Clear all"
+  - checkbox "Double integrals PDF page 1" [checked]
+  - text: Double integrals PDF page 1
+  - checkbox "Triple integrals PDF page 501" [checked]
+  - text: Triple integrals PDF page 501
+  - button "Generate summary"

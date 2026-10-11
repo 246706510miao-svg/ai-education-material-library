@@ -1,0 +1,711 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sidebar shell snapshots > keeps top navigation mounted when legacy collapse state changes 1`] = `
+<div
+  data-slot="sidebar"
+  style="display: contents;"
+>
+  <header
+    class="root"
+  >
+    <button
+      aria-label="New session"
+      class="brand"
+      type="button"
+    >
+      <div
+        data-slot="sidebar.brand.mark"
+        style="display: contents;"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c611d200"
+          fill="none"
+          height="34"
+          viewBox="0 0 32 32"
+          width="34"
+        />
+      </div>
+      <div
+        data-slot="sidebar.brand.name"
+        style="display: contents;"
+      >
+        <span
+          class="identity"
+        >
+          <strong>
+            AxisVerse
+          </strong>
+          <span>
+            · 一纸宇宙
+          </span>
+        </span>
+      </div>
+    </button>
+    <nav
+      aria-label="Global panels"
+      class="navigation"
+    >
+      <button
+        aria-label="New session"
+        class="newSession"
+        type="button"
+      >
+        <svg
+          data-content="c0ce4dcc"
+          fill="none"
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          New Session
+        </span>
+      </button>
+      <details
+        class="history"
+      >
+        <summary>
+          Learning records
+        </summary>
+        <button
+          aria-label="Close learning records"
+          class="backdrop"
+          type="button"
+        />
+        <section
+          aria-label="Learning records"
+          class="drawer"
+        >
+          <div
+            class="drawerHeading"
+          >
+            <strong>
+              Learning records
+            </strong>
+            <button
+              aria-label="Close learning records"
+              type="button"
+            >
+              <svg
+                data-content="b94f78dd"
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              />
+            </button>
+          </div>
+          <p
+            class="hint"
+          >
+            Revisit your questions and mark what you want to review.
+          </p>
+          <div
+            class="historyContent"
+          >
+            <div
+              data-slot="sidebar.workspaces"
+              style="display: contents;"
+            />
+          </div>
+        </section>
+      </details>
+      <button
+        class="trigger"
+        type="button"
+      >
+        <svg
+          data-content="b3883276"
+          fill="none"
+          height="18"
+          viewBox="0 0 16 16"
+          width="18"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          Course materials
+        </span>
+      </button>
+      <div
+        class="extras"
+      >
+        <div
+          data-slot="sidebar.footer.action"
+          style="display: contents;"
+        />
+      </div>
+    </nav>
+  </header>
+</div>
+`;
+
+exports[`sidebar shell snapshots > renders Chinese top navigation 1`] = `
+<div
+  data-slot="sidebar"
+  style="display: contents;"
+>
+  <header
+    class="root"
+  >
+    <button
+      aria-label="开始新提问"
+      class="brand"
+      type="button"
+    >
+      <div
+        data-slot="sidebar.brand.mark"
+        style="display: contents;"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c611d200"
+          fill="none"
+          height="34"
+          viewBox="0 0 32 32"
+          width="34"
+        />
+      </div>
+      <div
+        data-slot="sidebar.brand.name"
+        style="display: contents;"
+      >
+        <span
+          class="identity"
+        >
+          <strong>
+            AxisVerse
+          </strong>
+          <span>
+            · 一纸宇宙
+          </span>
+        </span>
+      </div>
+    </button>
+    <nav
+      aria-label="全局面板"
+      class="navigation"
+    >
+      <button
+        aria-label="开始新提问"
+        class="newSession"
+        type="button"
+      >
+        <svg
+          data-content="c0ce4dcc"
+          fill="none"
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          新提问
+        </span>
+      </button>
+      <details
+        class="history"
+      >
+        <summary>
+          学习记录
+        </summary>
+        <button
+          aria-label="关闭学习记录"
+          class="backdrop"
+          type="button"
+        />
+        <section
+          aria-label="学习记录"
+          class="drawer"
+        >
+          <div
+            class="drawerHeading"
+          >
+            <strong>
+              学习记录
+            </strong>
+            <button
+              aria-label="关闭学习记录"
+              type="button"
+            >
+              <svg
+                data-content="b94f78dd"
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              />
+            </button>
+          </div>
+          <p
+            class="hint"
+          >
+            回顾做过的题目，标记需要再次复习的内容
+          </p>
+          <div
+            class="historyContent"
+          >
+            <div
+              data-slot="sidebar.workspaces"
+              style="display: contents;"
+            />
+          </div>
+        </section>
+      </details>
+      <button
+        class="trigger"
+        type="button"
+      >
+        <svg
+          data-content="b3883276"
+          fill="none"
+          height="18"
+          viewBox="0 0 16 16"
+          width="18"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          课程资料
+        </span>
+      </button>
+      <div
+        class="extras"
+      >
+        <div
+          data-slot="sidebar.footer.action"
+          style="display: contents;"
+        />
+      </div>
+    </nav>
+  </header>
+</div>
+`;
+
+exports[`sidebar shell snapshots > renders English top navigation 1`] = `
+<div
+  data-slot="sidebar"
+  style="display: contents;"
+>
+  <header
+    class="root"
+  >
+    <button
+      aria-label="New session"
+      class="brand"
+      type="button"
+    >
+      <div
+        data-slot="sidebar.brand.mark"
+        style="display: contents;"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c611d200"
+          fill="none"
+          height="34"
+          viewBox="0 0 32 32"
+          width="34"
+        />
+      </div>
+      <div
+        data-slot="sidebar.brand.name"
+        style="display: contents;"
+      >
+        <span
+          class="identity"
+        >
+          <strong>
+            AxisVerse
+          </strong>
+          <span>
+            · 一纸宇宙
+          </span>
+        </span>
+      </div>
+    </button>
+    <nav
+      aria-label="Global panels"
+      class="navigation"
+    >
+      <button
+        aria-label="New session"
+        class="newSession"
+        type="button"
+      >
+        <svg
+          data-content="c0ce4dcc"
+          fill="none"
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          New Session
+        </span>
+      </button>
+      <details
+        class="history"
+      >
+        <summary>
+          Learning records
+        </summary>
+        <button
+          aria-label="Close learning records"
+          class="backdrop"
+          type="button"
+        />
+        <section
+          aria-label="Learning records"
+          class="drawer"
+        >
+          <div
+            class="drawerHeading"
+          >
+            <strong>
+              Learning records
+            </strong>
+            <button
+              aria-label="Close learning records"
+              type="button"
+            >
+              <svg
+                data-content="b94f78dd"
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              />
+            </button>
+          </div>
+          <p
+            class="hint"
+          >
+            Revisit your questions and mark what you want to review.
+          </p>
+          <div
+            class="historyContent"
+          >
+            <div
+              data-slot="sidebar.workspaces"
+              style="display: contents;"
+            />
+          </div>
+        </section>
+      </details>
+      <button
+        class="trigger"
+        type="button"
+      >
+        <svg
+          data-content="b3883276"
+          fill="none"
+          height="18"
+          viewBox="0 0 16 16"
+          width="18"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          Course materials
+        </span>
+      </button>
+      <div
+        class="extras"
+      >
+        <div
+          data-slot="sidebar.footer.action"
+          style="display: contents;"
+        />
+      </div>
+    </nav>
+  </header>
+</div>
+`;
+
+exports[`sidebar shell snapshots > renders Windows caption controls in expanded and collapsed states > windows collapsed 1`] = `
+<div
+  data-slot="sidebar"
+  style="display: contents;"
+>
+  <header
+    class="root"
+  >
+    <button
+      aria-label="New session"
+      class="brand"
+      type="button"
+    >
+      <div
+        data-slot="sidebar.brand.mark"
+        style="display: contents;"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c611d200"
+          fill="none"
+          height="34"
+          viewBox="0 0 32 32"
+          width="34"
+        />
+      </div>
+      <div
+        data-slot="sidebar.brand.name"
+        style="display: contents;"
+      >
+        <span
+          class="identity"
+        >
+          <strong>
+            AxisVerse
+          </strong>
+          <span>
+            · 一纸宇宙
+          </span>
+        </span>
+      </div>
+    </button>
+    <nav
+      aria-label="Global panels"
+      class="navigation"
+    >
+      <button
+        aria-label="New session"
+        class="newSession"
+        type="button"
+      >
+        <svg
+          data-content="c0ce4dcc"
+          fill="none"
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          New Session
+        </span>
+      </button>
+      <details
+        class="history"
+      >
+        <summary>
+          Learning records
+        </summary>
+        <button
+          aria-label="Close learning records"
+          class="backdrop"
+          type="button"
+        />
+        <section
+          aria-label="Learning records"
+          class="drawer"
+        >
+          <div
+            class="drawerHeading"
+          >
+            <strong>
+              Learning records
+            </strong>
+            <button
+              aria-label="Close learning records"
+              type="button"
+            >
+              <svg
+                data-content="b94f78dd"
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              />
+            </button>
+          </div>
+          <p
+            class="hint"
+          >
+            Revisit your questions and mark what you want to review.
+          </p>
+          <div
+            class="historyContent"
+          >
+            <div
+              data-slot="sidebar.workspaces"
+              style="display: contents;"
+            />
+          </div>
+        </section>
+      </details>
+      <button
+        class="trigger"
+        type="button"
+      >
+        <svg
+          data-content="b3883276"
+          fill="none"
+          height="18"
+          viewBox="0 0 16 16"
+          width="18"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          Course materials
+        </span>
+      </button>
+      <div
+        class="extras"
+      >
+        <div
+          data-slot="sidebar.footer.action"
+          style="display: contents;"
+        />
+      </div>
+    </nav>
+  </header>
+</div>
+`;
+
+exports[`sidebar shell snapshots > renders Windows caption controls in expanded and collapsed states > windows expanded 1`] = `
+<div
+  data-slot="sidebar"
+  style="display: contents;"
+>
+  <header
+    class="root"
+  >
+    <button
+      aria-label="New session"
+      class="brand"
+      type="button"
+    >
+      <div
+        data-slot="sidebar.brand.mark"
+        style="display: contents;"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c611d200"
+          fill="none"
+          height="34"
+          viewBox="0 0 32 32"
+          width="34"
+        />
+      </div>
+      <div
+        data-slot="sidebar.brand.name"
+        style="display: contents;"
+      >
+        <span
+          class="identity"
+        >
+          <strong>
+            AxisVerse
+          </strong>
+          <span>
+            · 一纸宇宙
+          </span>
+        </span>
+      </div>
+    </button>
+    <nav
+      aria-label="Global panels"
+      class="navigation"
+    >
+      <button
+        aria-label="New session"
+        class="newSession"
+        type="button"
+      >
+        <svg
+          data-content="c0ce4dcc"
+          fill="none"
+          height="16"
+          viewBox="0 0 16 16"
+          width="16"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          New Session
+        </span>
+      </button>
+      <details
+        class="history"
+      >
+        <summary>
+          Learning records
+        </summary>
+        <button
+          aria-label="Close learning records"
+          class="backdrop"
+          type="button"
+        />
+        <section
+          aria-label="Learning records"
+          class="drawer"
+        >
+          <div
+            class="drawerHeading"
+          >
+            <strong>
+              Learning records
+            </strong>
+            <button
+              aria-label="Close learning records"
+              type="button"
+            >
+              <svg
+                data-content="b94f78dd"
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              />
+            </button>
+          </div>
+          <p
+            class="hint"
+          >
+            Revisit your questions and mark what you want to review.
+          </p>
+          <div
+            class="historyContent"
+          >
+            <div
+              data-slot="sidebar.workspaces"
+              style="display: contents;"
+            />
+          </div>
+        </section>
+      </details>
+      <button
+        class="trigger"
+        type="button"
+      >
+        <svg
+          data-content="b3883276"
+          fill="none"
+          height="18"
+          viewBox="0 0 16 16"
+          width="18"
+          xmlns="http://www.w3.org/2000/svg"
+        />
+        <span>
+          Course materials
+        </span>
+      </button>
+      <div
+        class="extras"
+      >
+        <div
+          data-slot="sidebar.footer.action"
+          style="display: contents;"
+        />
+      </div>
+    </nav>
+  </header>
+</div>
+`;

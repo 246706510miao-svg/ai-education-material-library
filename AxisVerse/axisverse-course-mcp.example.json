@@ -1,0 +1,6 @@
+{
+  "url": "https://materials.for-fdd.xyz/mcp",
+  "headers": {
+    "Authorization": "Bearer REPLACE_WITH_YOUR_AUTHORIZED_MCP_TOKEN"
+  }
+}

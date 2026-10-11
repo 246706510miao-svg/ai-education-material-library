@@ -1,0 +1,8 @@
+version: 1
+scenario: axisverse-materials
+profile: headless
+composition: axisverse-materials
+recording: authored
+header:
+  class: axisverse-materials
+  pin: true

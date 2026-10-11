@@ -1,0 +1,14 @@
+- dialog "Study materials":
+  - heading "Study materials" [level=2]
+  - button "Close study materials":
+    - img
+  - paragraph: The original is saved first. After text processing, it can be used for material questions and summaries.
+  - button "Choose study materials PDF files":
+    - img
+    - text: Choose study materials PDF files
+  - list "Selected materials":
+    - listitem:
+      - img
+      - strong: notes.pdf
+      - text: 1 KB · Uploaded successfully
+      - button "Remove notes.pdf": Dismiss

@@ -1,0 +1,19 @@
+.dialog { width: min(640px, calc(100vw - 32px)); max-height: 85vh; overflow-y: auto; }
+.menuLabel { display: flex; flex-direction: column; gap: 3px; padding: 3px 0; }
+.menuDescription { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }
+.choose { width: 100%; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; padding: 22px; border: 1px dashed var(--dsw-alias-border-l2); border-radius: 14px; background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); cursor: pointer; font: inherit; }
+.choose span { width: 100%; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.empty { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.7; }
+.empty { text-align: center; padding: 20px; }
+.status, .backgroundStatus { display: flex; align-items: center; gap: 12px; padding: 12px 0; color: var(--dsw-alias-study-accent); font-size: calc(var(--dsh-content-font-size, 14px) + 4px); font-weight: 600; line-height: 1.5; }
+.backgroundStatus { border: 0; background: none; cursor: pointer; font-size: 14px; }
+.dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+.files { padding: 0; margin: 16px 0; list-style: none; }
+.file { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--dsw-alias-border-l2); }
+.details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.details strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.details span { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.details progress { width: 100%; height: 5px; accent-color: var(--dsw-alias-study-accent); }
+.link { background: none; border: 0; color: var(--dsw-alias-label-secondary); cursor: pointer; font: inherit; font-size: 12px; padding: 6px; }

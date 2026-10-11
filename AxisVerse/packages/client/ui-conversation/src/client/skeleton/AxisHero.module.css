@@ -1,0 +1,20 @@
+.root { margin: 0 var(--dsh-composer-side-clearance); container-type: inline-size; color: var(--dsw-alias-label-primary); }
+.overline { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; height: 105px; padding-bottom: 28px; }
+.overline > span { color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 18px; letter-spacing: 2.5px; padding-bottom: 10px; }
+.trace { width: 42%; height: 85px; overflow: visible; color: var(--dsw-alias-study-accent); }
+.path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 1; animation: connect 1.4s .45s ease forwards; }
+.node { fill: var(--dsw-alias-bg-base); stroke: currentColor; stroke-width: 1.6; animation: gather .9s cubic-bezier(.16,1,.3,1) both; }
+.node:last-child { fill: currentColor; }
+.wordbox { --axis-progress: 0%; position: relative; border: 1px solid var(--dsw-alias-study-outline); border-radius: 10px; }
+.words { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 18px 16px 22px; font-family: Arial, 'Microsoft YaHei', sans-serif; font-size: clamp(26px, 10.5cqw, 88px); font-weight: 800; line-height: 1.3; letter-spacing: -.065em; white-space: nowrap; }
+.words em { font-style: normal; font-weight: 400; font-size: .63em; letter-spacing: 0; }
+.color { position: absolute; inset: 0; color: var(--dsw-alias-study-accent); clip-path: inset(0 calc(100% - var(--axis-progress)) 0 0); pointer-events: none; }
+.cursor { position: absolute; left: var(--axis-progress); width: 2px; top: -12px; bottom: -12px; transform: translateX(-1px); background: var(--dsw-alias-study-accent); pointer-events: none; }
+.cursor::before { content: ''; position: absolute; top: 0; left: -6px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid var(--dsw-alias-study-accent); }
+.range { position: absolute; inset: -15px 0; width: 100%; height: calc(100% + 30px); opacity: 0; margin: 0; cursor: ew-resize; }
+.wordbox:focus-within { outline: 2px solid var(--dsw-alias-study-accent); outline-offset: 5px; }
+.subtitle { text-align: center; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 22px; margin: 26px 0 34px; }
+@keyframes connect { to { stroke-dashoffset: 0; } }
+@keyframes gather { from { opacity: 0; transform: translate(12px, -20px); } to { opacity: 1; transform: translate(0, 0); } }
+@container (max-width: 500px) { .overline { height: 100px; } .overline > span { font-size: 9px; letter-spacing: 1px; } .words { padding: 18px 8px; gap: 5px; font-size: 10cqw; } .subtitle { font-size: 11px; line-height: 20px; } }
+@media (prefers-reduced-motion: reduce) { .path { animation: none; stroke-dashoffset: 0; } .node { animation: none; } }

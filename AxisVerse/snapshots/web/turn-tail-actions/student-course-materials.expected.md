@@ -1,0 +1,18 @@
+- dialog "Course materials":
+  - heading "Course materials" [level=2]
+  - button "Close course materials":
+    - img
+  - paragraph: Manage your uploaded learning materials
+  - button "Refresh"
+  - article:
+    - img
+    - heading "Calculus_chapter9_original.pdf" [level=3]
+    - paragraph: Calculus · 524 pages
+    - paragraph: Multiple integrals
+    - button "Ask from material"
+    - button "Summarize material"
+    - link "Download":
+      - /url: /api/axisverse/materials/doc_uploaded/file?download=1
+      - img
+      - text: Download
+    - button "Delete"

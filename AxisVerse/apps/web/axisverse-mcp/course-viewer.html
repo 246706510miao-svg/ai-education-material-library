@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AxisVerse · PDF</title><link rel="stylesheet" href="../viewer.css"></head>
+<body>
+<header><a id="back" href="/">AxisVerse</a><strong id="title"></strong><a id="download" download></a></header>
+<nav aria-label="PDF"><button id="previous" disabled></button><label id="pageLabel" for="page"></label><input id="page" type="number" min="1" value="1" disabled><span id="total"></span><button id="next" disabled></button><button id="minus" disabled>−</button><span id="zoom">100%</span><button id="plus" disabled>+</button></nav>
+<p id="status" role="status"></p><button id="retry" hidden></button>
+<main><canvas id="canvas" hidden></canvas></main>
+<footer><a href="../assets/LICENSE">PDF.js · Apache 2.0</a></footer>
+<script type="module" src="../viewer.mjs"></script>
+</body></html>

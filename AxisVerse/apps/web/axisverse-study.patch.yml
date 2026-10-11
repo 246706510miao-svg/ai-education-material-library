@@ -1,0 +1,30 @@
+# Apply from the repository root with: pnpm dsh web --patch apps/web/axisverse-study.patch.yml
+# Select the lecture mode for a new session; existing sessions keep their original preset.
+- id: agent-presets
+  config:
+    default: axisverse
+    roots:
+      - path: !!js process.cwd() + '/apps/web/axisverse-presets'
+        trust: system
+
+- insert:
+    - id: axisverse-course-library
+      name: ./axisverse-mcp/course-library.mjs
+      config:
+        connectionFile: !!js process.env.AXISVERSE_COURSE_MCP_CONFIG || process.getBuiltinModule('node:os').homedir() + '/.dsh/axisverse-course-mcp.json'
+        receiptFiles: []
+        school: 南京理工大学
+        major: 软件工程
+        course: 高等数学
+        timeoutMs: 120000
+        uploadReceiptsDirectory: !!js process.cwd() + '/output/axisverse-study/upload-receipts'
+        uploadCourse: 个人学习资料
+        uploadUnit: 用户上传
+        maxUploadBytes: 524288000
+        maxRemotePages: 500
+        uploadTimeoutMs: 600000
+        ocrIdleTimeoutMs: 180000
+        uploadPollMs: 1500
+        splitCommand: !!js "[process.env.AXISVERSE_MCP_PYTHON || 'python', process.cwd() + '/apps/web/axisverse-mcp/split-pdf.py']"
+        ocrCommand: !!js "[process.env.AXISVERSE_MCP_PYTHON || 'python', process.cwd() + '/apps/web/axisverse-mcp/recognize-pdf.py', '--powershell', process.env.AXISVERSE_POWERSHELL || 'C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', '--font', 'C:/Windows/Fonts/msyh.ttc', '--max-side', '2200', '--batch-size', '10', '--render-side', '1600', '--jpeg-quality', '75', '--max-output-bytes', '41943040', '--compression-passes', '3']"
+        pdfAssetsDirectory: !!js process.cwd() + '/packages/client/ui-sidebar-documentpreview/node_modules/pdfjs-dist'

@@ -1,0 +1,7 @@
+AxisVerse 高数演示交付
+
+请先阅读同目录《启动与高数演示.md》。
+Windows 首次启动：填写 .env 中模型与资料服务两类凭据，然后运行 scripts/axisverse.ps1。
+脚本自动安装、构建并通过正式 dsh CLI 启动。后续运行 pnpm run axisverse:start。
+资料与提问顺序已写入演示文档；模型输出以实际生成内容为准。
+真实密钥、教材原件、个人会话和入库回执不随源码发布。

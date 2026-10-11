@@ -1,0 +1,65 @@
+# Replay patch shared by the ordinary headless snapshot composition. The model
+# script comes from the scenario's committed session JSONL.
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: session-title-llm
+  disabled: true
+
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+  config:
+    runnerCommand:
+      - bash
+      - -c
+      - while [ "$1" != "--" ]; do shift; done; shift; exec "$@"
+      - passthrough-runner
+    runnerFailureSignatures:
+      - 'passthrough-runner: profile rejected'
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+              - id: deepseek-v4-pro
+          - id: deepseek-messages
+            name: DeepSeek Messages
+            models:
+              - id: deepseek-v4-flash
+              - id: deepseek-v4-pro
+
+- id: system-prompt
+  config:
+    personaPrefix: !!js >-
+      process.getBuiltinModule('node:fs').readFileSync(process.cwd() + '/apps/web/axisverse-presets/axisverse/tutor-prompt.txt', 'utf8')
+
+- insert:
+    - id: mcp-axisverse-materials
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: axisverse
+        transport: stdio
+        command: !!js process.env.AXISVERSE_MCP_PYTHON || 'python'
+        args: !!js >-
+          ['-B', '-X', 'utf8', '-u', process.cwd() + '/apps/web/axisverse-mcp/server.py',
+          '--corpus', process.env.AXISVERSE_MATERIAL_PATH || process.cwd() + '/output/pdf/教材第九章-检索材料.json',
+          '--max-results', '5', '--max-query-chars', '200',
+          '--plot-output-dir', process.cwd() + '/.dsh/axisverse-diagrams']
+        toolCallTimeoutMs: 15000
+        failOnStartupError: true

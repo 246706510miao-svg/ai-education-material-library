@@ -1,0 +1,27 @@
+- banner:
+  - navigation "Session hierarchy":
+    - button "Begin your reply with the" [disabled]
+- button "System prompt":
+  - img
+  - img
+  - text: System prompt
+- text: Begin your reply with the plain sentence "Reading the workspace now." as text, and in that same message call the bash tool with the command "echo alpha". After the tool result, reply with the single word DONE and stop. {{clock}}
+- button "Copy":
+  - img
+- button "1 tool call · 1 message":
+  - text: 1 tool call · 1 message
+  - img
+- paragraph: DONE
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- text: {{clock}}
+- textbox "Enter a problem, your working, or what you find confusing…"
+- button "Add files or run commands":
+  - img
+- button "Send message" [disabled]

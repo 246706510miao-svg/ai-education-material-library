@@ -1,0 +1,10 @@
+- dialog "Course materials":
+  - heading "Course materials" [level=2]
+  - button "Close course materials":
+    - img
+  - paragraph: Manage your uploaded learning materials
+  - button "Refresh"
+  - status:
+    - text: Removed from course materials
+    - button "Undo"
+  - paragraph: No uploaded course materials yet

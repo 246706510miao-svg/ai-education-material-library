@@ -1,0 +1,4 @@
+# Recipient-only settings and library ownership. Apply after the AxisVerse patch.
+- id: settings
+  config:
+    path: !!js process.cwd() + '/axisverse-team.settings.yml'

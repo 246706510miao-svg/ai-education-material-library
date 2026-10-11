@@ -1,0 +1,7 @@
+.root { padding: 14px var(--dsh-composer-side-clearance) 0; }
+.cards { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
+.heading { color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 20px; }
+.card { padding: 6px 0; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+.card strong { font-size: 12px; line-height: 20px; font-weight: 400; }
+.card:hover { color: var(--dsw-alias-study-accent); }
+.footer { margin-top: 52px; text-align: center; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 20px; }

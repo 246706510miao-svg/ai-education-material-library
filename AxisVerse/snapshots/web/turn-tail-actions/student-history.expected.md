@@ -1,0 +1,22 @@
+- region "Learning records":
+  - strong: Learning records
+  - button "Close learning records":
+    - img
+  - paragraph: Revisit your questions and mark what you want to review.
+  - group "Filter learning records":
+    - button "All 1" [pressed]
+    - button "To review 1"
+  - img
+  - searchbox "Search questions or topics"
+  - region "To review":
+    - heading "To review 1" [level=3]
+    - article:
+      - button "Triple integral definition Triple integrals now":
+        - strong: Triple integral definition
+        - text: Triple integrals
+        - time: now
+      - button "Unmark “Triple integral definition” for review" [pressed]: To review
+      - button "Edit the title of “Triple integral definition”":
+        - img
+      - button "Delete the record “Triple integral definition”":
+        - img
